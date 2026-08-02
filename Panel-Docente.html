@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel del Docente — Taller de Geometría</title>
+<style>
+  :root{
+    --paper:#FAFAF7; --ink:#1F2933; --slate:#8592A0;
+    --accent:#2F7A6F; --accent-dark:#215951; --mustard:#D9A441; --bad:#B3452C; --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; background:var(--paper); color:var(--ink);}
+  header{padding:14px 18px; border-bottom:2px solid var(--ink);}
+  header h1{margin:0; font-size:1.1rem;}
+  main{max-width:1100px; margin:0 auto; padding:16px;}
+  .card{background:var(--card); border:2px solid var(--ink); border-radius:8px; padding:16px; margin-bottom:16px;}
+  .btn{background:var(--ink); color:#fff; border:none; padding:9px 14px; border-radius:6px; font-weight:700; font-size:0.85rem; cursor:pointer; margin:4px 6px 4px 0;}
+  .btn.secondary{background:transparent; color:var(--ink); border:2px solid var(--ink);}
+  .btn.warn{background:var(--bad); border:none; color:#fff;}
+  .btn:disabled{opacity:0.5; cursor:not-allowed;}
+  table{width:100%; border-collapse:collapse; font-size:0.82rem;}
+  th, td{border:1px solid #ddd; padding:6px 8px; text-align:left;}
+  th{background:#F0EFE9; position:sticky; top:0;}
+  tr:nth-child(even){background:#FAFAF7;}
+  .resumen{display:flex; gap:20px; flex-wrap:wrap; margin-bottom:10px; font-size:0.9rem;}
+  .resumen b{font-size:1.3rem; display:block; color:var(--accent-dark);}
+  select, input[type=number]{padding:6px 8px; border:1.5px solid var(--ink); border-radius:6px;}
+  .hidden{display:none !important;}
+  .estado-COMPLETADO{color:var(--accent-dark); font-weight:700;}
+  .estado-EN_PROGRESO{color:var(--mustard); font-weight:700;}
+  .tabla-wrap{max-height:520px; overflow:auto; border:1px solid #ddd;}
+  #hint{font-size:0.85rem; margin-top:8px;}
+  #hint.ok{color:var(--accent);} #hint.err{color:var(--bad);}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<header><h1>📊 Panel del Docente — Taller de Geometría</h1></header>
+
+<main>
+  <div class="card" id="loginCard">
+    <p>Inicia sesión con la cuenta que registraste como docente en <code>firestore.rules</code>.</p>
+    <button class="btn" id="btnLogin">Iniciar sesión con Google</button>
+    <div id="loginHint" style="color:var(--bad); font-size:0.85rem; margin-top:8px;"></div>
+  </div>
+
+  <div class="hidden" id="panel">
+    <div class="card">
+      <h2 style="margin-top:0;">Configuración del taller</h2>
+      <div id="configTxt" style="font-size:0.85rem; color:var(--slate); margin-bottom:10px;"></div>
+      <button class="btn" id="btnPausar">⏸ Pausar actividad</button>
+      <button class="btn secondary" id="btnReanudar">▶ Reanudar actividad</button>
+      <button class="btn warn" id="btnCerrar">🔒 Cerrar taller</button>
+      <button class="btn secondary" id="btnAbrir">🔓 Abrir taller</button>
+      <button class="btn secondary" id="btnQuitarTiempo">⏱ Quitar límite de tiempo</button>
+      <br>
+      <label style="font-size:0.85rem; font-weight:600;">Minutos por intento: </label>
+      <input type="number" id="inputMinutos" style="width:80px;">
+      <button class="btn secondary" id="btnPonerTiempo">Aplicar minutos</button>
+      <div id="hint"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;">Resultados</h2>
+      <div class="resumen">
+        <div>Total intentos<b id="rTotal">-</b></div>
+        <div>Completados<b id="rCompletados">-</b></div>
+        <div>En progreso<b id="rProgreso">-</b></div>
+        <div>Aprobados<b id="rAprobados">-</b></div>
+        <div>Promedio<b id="rPromedio">-</b></div>
+      </div>
+      <label style="font-size:0.85rem; font-weight:600;">Filtrar por curso: </label>
+      <select id="filtroCurso">
+        <option value="">Todos</option>
+        <option value="601">601</option>
+        <option value="602">602</option>
+        <option value="603">603</option>
+      </select>
+      <button class="btn secondary" id="btnRecargar">🔄 Recargar datos</button>
+      <button class="btn" id="btnExportar">📥 Exportar a CSV (Excel)</button>
+      <div class="tabla-wrap">
+        <table id="tabla">
+          <thead>
+            <tr>
+              <th>Apellidos</th><th>Nombres</th><th>Curso</th><th>Versión</th><th>Estado</th>
+              <th>Aciertos</th><th>Nota</th><th>Aprobado</th><th>Fuera de tiempo</th><th>Inicio</th><th>Fin</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tablaBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const firebaseConfig = {
+    apiKey: "AIzaSyCPPHrkjXT3Wcl5duCKFu1IP0gOr0p69-4",
+    authDomain: "taller-geometria1.firebaseapp.com",
+    projectId: "taller-geometria1",
+    storageBucket: "taller-geometria1.firebasestorage.app",
+    messagingSenderId: "403923437100",
+    appId: "1:403923437100:web:ec8aa9d84706bf99ba3389"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const PUNTOS_MAXIMOS = 20;
+
+  let todosLosIntentos = [];
+
+  document.getElementById('btnLogin').addEventListener('click', ()=>{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(err=>{
+      document.getElementById('loginHint').textContent = 'Error: ' + err.message;
+    });
+  });
+
+  auth.onAuthStateChanged(user=>{
+    if(!user) return;
+    document.getElementById('loginCard').classList.add('hidden');
+    document.getElementById('panel').classList.remove('hidden');
+    cargarConfig();
+    cargarIntentos();
+  });
+
+  function setHint(msg, kind){
+    const el = document.getElementById('hint');
+    el.textContent = msg; el.className = kind || '';
+  }
+
+  async function cargarConfig(){
+    try{
+      const snap = await db.collection('config').doc('main').get();
+      const d = snap.exists ? snap.data() : {};
+      document.getElementById('configTxt').innerHTML =
+        `Pausada: <b>${d.actividadPausada ? 'SÍ' : 'no'}</b> · Cerrada: <b>${d.cerradoManual ? 'SÍ' : 'no'}</b> · ` +
+        `Minutos por intento: <b>${d.minutosPorIntento || 'sin límite'}</b> · Nota mínima: <b>${d.notaMinima ?? '-'}</b> · Intentos permitidos: <b>${d.intentosPermitidos ?? '-'}</b>`;
+      document.getElementById('inputMinutos').value = d.minutosPorIntento || '';
+    }catch(err){
+      setHint('No se pudo leer la configuración: ' + err.message, 'err');
+    }
+  }
+
+  async function actualizarConfig(cambios){
+    try{
+      await db.collection('config').doc('main').set(cambios, {merge:true});
+      setHint('Listo, se actualizó la configuración.', 'ok');
+      cargarConfig();
+    }catch(err){
+      setHint('No se pudo actualizar: ' + err.message, 'err');
+    }
+  }
+
+  document.getElementById('btnPausar').addEventListener('click', ()=> actualizarConfig({actividadPausada:true}));
+  document.getElementById('btnReanudar').addEventListener('click', ()=> actualizarConfig({actividadPausada:false}));
+  document.getElementById('btnCerrar').addEventListener('click', ()=> actualizarConfig({cerradoManual:true}));
+  document.getElementById('btnAbrir').addEventListener('click', ()=> actualizarConfig({cerradoManual:false}));
+  document.getElementById('btnQuitarTiempo').addEventListener('click', ()=> actualizarConfig({minutosPorIntento:null}));
+  document.getElementById('btnPonerTiempo').addEventListener('click', ()=>{
+    const v = parseInt(document.getElementById('inputMinutos').value, 10);
+    if(!v || v<=0){ setHint('Escribe un número de minutos válido.', 'err'); return; }
+    actualizarConfig({minutosPorIntento:v});
+  });
+
+  async function cargarIntentos(){
+    try{
+      const snap = await db.collection('intentos').get();
+      todosLosIntentos = [];
+      snap.forEach(doc=> todosLosIntentos.push({id:doc.id, ...doc.data()}));
+      pintarTabla();
+    }catch(err){
+      setHint('No se pudieron cargar los intentos: ' + err.message, 'err');
+    }
+  }
+  document.getElementById('btnRecargar').addEventListener('click', cargarIntentos);
+  document.getElementById('filtroCurso').addEventListener('change', pintarTabla);
+
+  function fmtFecha(ts){
+    if(!ts) return '—';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleString('es-CO');
+  }
+
+  function pintarTabla(){
+    const curso = document.getElementById('filtroCurso').value;
+    const filtrados = todosLosIntentos.filter(x => !curso || String(x.curso)===curso);
+
+    const completados = filtrados.filter(x=>x.estado==='COMPLETADO');
+    const aprobados = completados.filter(x=>x.aprobado===true);
+    const promedio = completados.length ? (completados.reduce((s,x)=>s+(x.nota||0),0)/completados.length).toFixed(1) : '—';
+
+    document.getElementById('rTotal').textContent = filtrados.length;
+    document.getElementById('rCompletados').textContent = completados.length;
+    document.getElementById('rProgreso').textContent = filtrados.filter(x=>x.estado==='EN_PROGRESO').length;
+    document.getElementById('rAprobados').textContent = aprobados.length;
+    document.getElementById('rPromedio').textContent = promedio;
+
+    const tbody = document.getElementById('tablaBody');
+    tbody.innerHTML = '';
+    filtrados.sort((a,b)=> (a.apellidos||'').localeCompare(b.apellidos||''));
+    filtrados.forEach(x=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${x.apellidos||''}</td><td>${x.nombre||''}</td><td>${x.curso||''}</td><td>${x.version||''}</td>
+        <td class="estado-${x.estado}">${x.estado||''}</td>
+        <td>${x.puntos ?? '—'}</td><td>${x.nota ?? '—'}</td>
+        <td>${x.aprobado===true?'Sí':(x.aprobado===false?'No':'—')}</td>
+        <td>${x.fueraDeTiempo?'Sí':'No'}</td>
+        <td>${fmtFecha(x.inicio)}</td><td>${fmtFecha(x.fin)}</td>
+        <td>${x.respuestasJSON ? `<button class="btn secondary" style="padding:4px 8px;font-size:0.75rem;" data-id="${x.id}">Recalcular</button>` : ''}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('button[data-id]').forEach(btn=>{
+      btn.addEventListener('click', ()=> recalcular(btn.dataset.id));
+    });
+  }
+
+  async function recalcular(intentoId){
+    try{
+      const configSnap = await db.collection('config').doc('main').get();
+      const cfg = configSnap.exists ? configSnap.data() : {};
+      const item = todosLosIntentos.find(x=>x.id===intentoId);
+      if(!item || !item.respuestasJSON){ setHint('Ese intento no tiene respuestas guardadas para recalcular.', 'err'); return; }
+      const respuestas = JSON.parse(item.respuestasJSON);
+      const puntos = respuestas.filter(r=>r && r.correcta).length;
+      const nota = Math.round((puntos/PUNTOS_MAXIMOS)*5*10)/10;
+      const aprobado = nota >= (cfg.notaMinima || 3.0);
+      await db.collection('intentos').doc(intentoId).update({puntos, nota, aprobado});
+      setHint(`Recalculado: ${puntos}/${PUNTOS_MAXIMOS} → nota ${nota}`, 'ok');
+      cargarIntentos();
+    }catch(err){
+      setHint('No se pudo recalcular: ' + err.message, 'err');
+    }
+  }
+
+  document.getElementById('btnExportar').addEventListener('click', ()=>{
+    const curso = document.getElementById('filtroCurso').value;
+    const filtrados = todosLosIntentos.filter(x => !curso || String(x.curso)===curso);
+    const encabezados = ['Apellidos','Nombres','Curso','Version','Estado','Aciertos','Nota','Aprobado','FueraDeTiempo','Inicio','Fin'];
+    const filas = filtrados.map(x => [
+      x.apellidos||'', x.nombre||'', x.curso||'', x.version||'', x.estado||'',
+      x.puntos ?? '', x.nota ?? '', x.aprobado===true?'Si':(x.aprobado===false?'No':''),
+      x.fueraDeTiempo?'Si':'No', fmtFecha(x.inicio), fmtFecha(x.fin)
+    ]);
+    const csv = [encabezados, ...filas].map(fila =>
+      fila.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')
+    ).join('\n');
+    const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'notas_taller_geometria.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>
