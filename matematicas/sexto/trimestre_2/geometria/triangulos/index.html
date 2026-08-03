@@ -175,6 +175,18 @@
 const DOMINIO_INSTITUCIONAL = 'colcompartirsubaied.edu.co';
 const VERSION_CODIGO = 'v1-firebase (2026-08-01)';
 
+// ============================================================
+// 🏷️ ETIQUETA DE ESTA ACTIVIDAD — cámbiala en cada nueva actividad/copia.
+// Así el Panel del Docente puede filtrar por materia, grado, trimestre y
+// actividad, aunque todas compartan el mismo Firestore.
+// ============================================================
+const ETIQUETA_ACTIVIDAD = {
+  materia: 'Matemáticas',
+  grado: 'Sexto',
+  trimestre: 1,
+  actividad: 'Construcción de triángulos'
+};
+
 const firebaseConfig = {
   apiKey: "AIzaSyCPPHrkjXT3Wcl5duCKFu1IP0gOr0p69-4",
   authDomain: "taller-geometria1.firebaseapp.com",
@@ -458,6 +470,7 @@ const UNIT = 34;
       const version = asignarVersion_(correo, window.__numeroIntentosPrevios || 0);
       const nuevoDoc = {
         correo, nombre, apellidos, curso, version,
+        ...ETIQUETA_ACTIVIDAD,
         estado: 'EN_PROGRESO',
         inicio: firebase.firestore.FieldValue.serverTimestamp(),
         segundosUsados: 0,
@@ -551,8 +564,8 @@ const UNIT = 34;
     }
   }
 
-  function registrarRespuesta(correcta){
-    SES.respuestas[SES.indiceActual] = {correcta};
+  function registrarRespuesta(correcta, detalle){
+    SES.respuestas[SES.indiceActual] = {correcta, detalle: detalle||''};
     document.getElementById('progresoTxt').textContent = `Pregunta ${SES.indiceActual+1} de ${TOTAL_PREGUNTAS}`;
     // Guardamos cada 4 preguntas (no en cada una) para no saturar la base de datos con 100+ estudiantes a la vez.
     if((SES.indiceActual+1) % 4 === 0) autoguardar();
@@ -683,8 +696,8 @@ const UNIT = 34;
     });
   });
   document.getElementById('btnDeshacer').addEventListener('click', ()=>{ activo && activo.undo && activo.undo(); });
-  const WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec'; // <-- pega aquí el enlace /exec del Notificador.gs
-  const WEBHOOK_AVISO_TOKEN = 'AmoamiFamilia2026'; // debe ser igual al de Notificador.gs
+  const WEBHOOK_AVISO_URL = ''; // <-- pega aquí el enlace /exec del Notificador.gs
+  const WEBHOOK_AVISO_TOKEN = 'cambia-esta-palabra-clave'; // debe ser igual al de Notificador.gs
 
   document.getElementById('btnAvisar').addEventListener('click', async ()=>{
     const btn = document.getElementById('btnAvisar');
@@ -707,7 +720,10 @@ const UNIT = 34;
       setTimeout(()=>{ btn.disabled=false; btn.textContent='⚠️ Avisar al profesor'; }, 4000);
     }catch(err){
       btn.textContent = '⚠️ Avisar al profesor'; btn.disabled=false;
-      alert('No se pudo avisar automáticamente. Levanta la mano y avísale directo a tu profesor.');
+      console.error('Fallo al guardar el aviso en Firestore:', err);
+      alert('No se pudo guardar el aviso en la base de datos (motivo: ' + err.message + '). '
+        + 'Levanta la mano y avísale directo a tu profesor. Si ves "permission-denied", revisa que las '
+        + 'reglas de Firestore estén PUBLICADAS, no solo guardadas en el editor.');
     }
   });
   document.getElementById('btnVerificarPregunta').addEventListener('click', (e)=>{
@@ -805,7 +821,7 @@ const UNIT = 34;
       setHint('¡Bien hecho!','ok');
       actualizarInstruccion();
       render();
-      if(!currentStep()){ setHint('¡Triángulo construido correctamente!','ok'); setTimeout(()=>registrarRespuesta(true), 900); }
+      if(!currentStep()){ setHint('¡Triángulo construido correctamente!','ok'); setTimeout(()=>registrarRespuesta(true, `Construcción ${p.caso} completada`), 900); }
     }
 
     function getRefPoint(step){ return st.points[step.ref]; }
@@ -1093,7 +1109,7 @@ const UNIT = 34;
       const val = parseFloat(answerInput.value);
       const correcta = !isNaN(val) && Math.abs(val - p.largoCm) <= 0.3;
       setHint(correcta? '¡Correcto!' : `La medida correcta era ${p.largoCm.toFixed(1)} cm.`, correcta?'ok':'err');
-      setTimeout(()=>registrarRespuesta(correcta), 1000);
+      setTimeout(()=>registrarRespuesta(correcta, `Respondió ${answerInput.value} cm (correcto: ${p.largoCm.toFixed(1)} cm)`), 1000);
     }
     return { render, onDown, onMove, onUp, verificar };
   }
@@ -1195,7 +1211,7 @@ const UNIT = 34;
       const val = parseFloat(answerInput.value);
       const correcta = !isNaN(val) && Math.abs(val - p.grados) <= 4;
       setHint(correcta? '¡Correcto!' : `El ángulo correcto era ${p.grados}°.`, correcta?'ok':'err');
-      setTimeout(()=>registrarRespuesta(correcta), 1000);
+      setTimeout(()=>registrarRespuesta(correcta, `Respondió ${answerInput.value}° (correcto: ${p.grados}°)`), 1000);
     }
     return { render, onDown, onMove, onUp, verificar };
   }
@@ -1255,7 +1271,7 @@ const UNIT = 34;
       const val = parseFloat(answerInput.value);
       const correcta = !isNaN(val) && Math.abs(val - 180) <= 6;
       setHint(correcta? '¡Correcto! Los ángulos internos de cualquier triángulo siempre suman 180°.' : 'Revisa: mide los tres vértices y suma los tres valores (deben dar 180°).', correcta?'ok':'err');
-      setTimeout(()=>registrarRespuesta(correcta), 1000);
+      setTimeout(()=>registrarRespuesta(correcta, `Respondió suma=${answerInput.value}°`), 1000);
     }
     return { render, onDown, onMove, onUp, verificar };
   }
