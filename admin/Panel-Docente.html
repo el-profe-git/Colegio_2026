@@ -39,7 +39,10 @@
 </head>
 <body>
 
-<header><h1>📊 Panel del Docente — Taller de Geometría</h1></header>
+<header style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+  <h1>📊 Panel del Docente — Taller de Geometría</h1>
+  <button class="btn secondary" id="btnCerrarSesion" style="margin:0;">🔒 Cerrar sesión</button>
+</header>
 
 <main>
   <div class="card" id="loginCard">
@@ -122,6 +125,14 @@
   const db = firebase.firestore();
   const PUNTOS_MAXIMOS = 20;
 
+  // Cambia esto por tu mismo correo docente (el que pusiste en firestore.rules).
+  const CORREO_DOCENTE_ESPERADO = 'leonardo.antolinez@colcompartirsubaied.edu.co';
+
+  // La sesión dura solo mientras la pestaña esté abierta — al cerrar el navegador,
+  // queda deslogueado automáticamente. Así, en un computador compartido/de sala de
+  // sistemas, no queda una sesión abierta esperando a que alguien más la use.
+  auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
   let todosLosIntentos = [];
 
   document.getElementById('btnLogin').addEventListener('click', ()=>{
@@ -133,10 +144,22 @@
 
   auth.onAuthStateChanged(user=>{
     if(!user) return;
+    if(user.email !== CORREO_DOCENTE_ESPERADO){
+      document.getElementById('loginHint').textContent = 'Esta cuenta (' + user.email + ') no tiene permiso para ver el Panel. Cierra sesión de Google e intenta con la cuenta docente correcta.';
+      auth.signOut();
+      return;
+    }
     document.getElementById('loginCard').classList.add('hidden');
     document.getElementById('panel').classList.remove('hidden');
     cargarConfig();
     cargarIntentos();
+  });
+
+  document.getElementById('btnCerrarSesion').addEventListener('click', ()=>{
+    auth.signOut().then(()=>{
+      document.getElementById('panel').classList.add('hidden');
+      document.getElementById('loginCard').classList.remove('hidden');
+    });
   });
 
   function setHint(msg, kind){
