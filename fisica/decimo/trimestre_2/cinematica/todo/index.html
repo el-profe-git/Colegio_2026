@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taller Interactivo de Geometría</title>
+<title>Física — Cinemática Completa</title>
 <style>
   :root{
     --paper:#FAFAF7; --ink:#1F2933; --slate:#8592A0;
@@ -74,7 +74,7 @@
 <body>
 
 <header>
-  <h1>📐 Taller Interactivo de Geometría</h1>
+  <h1>🚀 Física — Cinemática Completa</h1>
   <span id="progresoTxt"></span>
   <span id="timerTxt"></span>
   <button id="btnAvisar" style="font-size:0.75rem;padding:6px 10px;border-radius:6px;border:1.5px solid var(--bad);background:transparent;color:var(--bad);font-weight:700;cursor:pointer;">⚠️ Avisar al profesor</button>
@@ -99,17 +99,6 @@
 
   <!-- FORMULARIO DE IDENTIFICACIÓN (solo si no hay intento en progreso) -->
   <div class="hidden card" id="identCard">
-    <div style="text-align:center; margin-bottom:6px;">
-      <svg width="120" height="100" viewBox="0 0 120 100">
-        <polygon points="60,15 15,85 105,85" fill="none" stroke="#2F7A6F" stroke-width="4"
-          stroke-dasharray="240" stroke-dashoffset="240">
-          <animate attributeName="stroke-dashoffset" from="240" to="0" dur="1.6s" fill="freeze" />
-        </polygon>
-        <circle cx="60" cy="15" r="4" fill="#D9A441"><animate attributeName="r" values="4;6;4" dur="1.8s" repeatCount="indefinite"/></circle>
-        <circle cx="15" cy="85" r="4" fill="#D9A441"><animate attributeName="r" values="4;6;4" dur="1.8s" begin="0.3s" repeatCount="indefinite"/></circle>
-        <circle cx="105" cy="85" r="4" fill="#D9A441"><animate attributeName="r" values="4;6;4" dur="1.8s" begin="0.6s" repeatCount="indefinite"/></circle>
-      </svg>
-    </div>
     <h2>Antes de empezar</h2>
     <div style="background:#F0EFE9; border-radius:6px; padding:10px 12px; font-size:0.82rem; color:var(--ink); margin-bottom:10px; line-height:1.5;">
       <b>Objetivo:</b> explicar el movimiento rectilíneo uniforme a partir de posición, trayectoria, distancia, desplazamiento, rapidez y velocidad.<br>
@@ -254,7 +243,7 @@ async function arrancarFlujo_(correo){
   }
 
   const enProgresoQ = await db.collection('intentos')
-    .where('correo','==',correo).where('estado','==','EN_PROGRESO').limit(1).get();
+    .where('correo','==',correo).where('actividad','==',ETIQUETA_ACTIVIDAD.actividad).where('estado','==','EN_PROGRESO').limit(1).get();
   if(!enProgresoQ.empty){
     const doc = enProgresoQ.docs[0];
     const d = doc.data();
@@ -267,7 +256,7 @@ async function arrancarFlujo_(correo){
   }
 
   const completadosQ = await db.collection('intentos')
-    .where('correo','==',correo).where('estado','==','COMPLETADO').get();
+    .where('correo','==',correo).where('actividad','==',ETIQUETA_ACTIVIDAD.actividad).where('estado','==','COMPLETADO').get();
   const completados = completadosQ.size;
   if(completados >= SERVER.config.intentosPermitidos){
     let mejor = 0;
