@@ -92,6 +92,8 @@
         <option value="602">602</option>
         <option value="603">603</option>
       </select>
+      <label style="font-size:0.85rem; font-weight:600;">Buscar por documento: </label>
+      <input type="text" id="filtroDocumento" placeholder="Número de documento" style="width:160px;">
       <button class="btn secondary" id="btnRecargar">🔄 Recargar datos</button>
       <button class="btn" id="btnExportar">📥 Exportar a CSV (Excel)</button>
       <div class="tabla-wrap">
@@ -99,7 +101,7 @@
           <thead>
             <tr>
               <th>Materia</th><th>Grado</th><th>Trim.</th><th>Actividad</th>
-              <th>Apellidos</th><th>Nombres</th><th>Curso</th><th>Versión</th><th>Estado</th>
+              <th>Apellidos</th><th>Nombres</th><th>Documento</th><th>Curso</th><th>Versión</th><th>Estado</th>
               <th>Aciertos</th><th>Nota</th><th>Aprobado</th><th>Tiempo</th><th>Fuera de tiempo</th><th>Inicio</th><th>Fin</th><th></th>
             </tr>
           </thead>
@@ -215,6 +217,7 @@
   ['filtroCurso','filtroMateria','filtroGrado','filtroTrimestre','filtroActividad'].forEach(id=>{
     document.getElementById(id).addEventListener('change', pintarTabla);
   });
+  document.getElementById('filtroDocumento').addEventListener('input', pintarTabla);
 
   function poblarFiltro(id, valores){
     const sel = document.getElementById(id);
@@ -246,13 +249,15 @@
     const grado = document.getElementById('filtroGrado').value;
     const trimestre = document.getElementById('filtroTrimestre').value;
     const actividad = document.getElementById('filtroActividad').value;
+    const documentoBuscado = document.getElementById('filtroDocumento').value.trim();
 
     const filtrados = todosLosIntentos.filter(x =>
       (!curso || String(x.curso)===curso) &&
       (!materia || x.materia===materia) &&
       (!grado || x.grado===grado) &&
       (!trimestre || String(x.trimestre)===trimestre) &&
-      (!actividad || x.actividad===actividad)
+      (!actividad || x.actividad===actividad) &&
+      (!documentoBuscado || String(x.documento||'').includes(documentoBuscado))
     );
 
     const completados = filtrados.filter(x=>x.estado==='COMPLETADO');
@@ -270,13 +275,20 @@
     filtrados.sort((a,b)=> (a.apellidos||'').localeCompare(b.apellidos||''));
     filtrados.forEach(x=>{
       const tr = document.createElement('tr');
-      const accion = x.estado==='EN_PROGRESO'
-        ? `<button class="btn warn" style="padding:4px 8px;font-size:0.75rem;" data-incompleto="${x.id}">Calificar (no entregó)</button>`
-        : (x.respuestasJSON ? `<button class="btn secondary" style="padding:4px 8px;font-size:0.75rem;" data-id="${x.id}">Recalcular</button>` : '');
+      const anulado = x.estado==='ANULADO_POR_DOCENTE';
+      let accion = '';
+      if(x.estado==='EN_PROGRESO'){
+        accion = `<button class="btn warn" style="padding:4px 8px;font-size:0.75rem;" data-incompleto="${x.id}">Calificar (no entregó)</button>`;
+      }else if(anulado){
+        accion = `<span style="color:var(--slate);font-size:0.75rem;">no cuenta para el límite</span>`;
+      }else{
+        accion = (x.respuestasJSON ? `<button class="btn secondary" style="padding:4px 8px;font-size:0.75rem;" data-id="${x.id}">Recalcular</button>` : '')
+          + ` <button class="btn secondary" style="padding:4px 8px;font-size:0.75rem;" data-anular="${x.id}">🎁 Dar intento extra</button>`;
+      }
       tr.innerHTML = `
         <td>${x.materia||''}</td><td>${x.grado||''}</td><td>${x.trimestre??''}</td><td>${x.actividad||''}</td>
-        <td>${x.apellidos||''}</td><td>${x.nombre||''}</td><td>${x.curso||''}</td><td>${x.version||''}</td>
-        <td class="estado-${x.estado}">${x.estado||''}${x.entregaIncompleta?' (manual)':''}</td>
+        <td>${x.apellidos||''}</td><td>${x.nombre||''}</td><td>${x.documento||''}</td><td>${x.curso||''}</td><td>${x.version||''}</td>
+        <td class="estado-${x.estado}" style="${anulado?'opacity:0.55;':''}">${x.estado||''}${x.entregaIncompleta?' (manual)':''}</td>
         <td>${x.puntos ?? '—'}</td><td>${x.nota ?? '—'}</td>
         <td>${x.aprobado===true?'Sí':(x.aprobado===false?'No':'—')}</td>
         <td>${fmtTiempo(x.segundosUsados)}</td>
@@ -292,6 +304,28 @@
     tbody.querySelectorAll('button[data-incompleto]').forEach(btn=>{
       btn.addEventListener('click', ()=> calificarIncompleto(btn.dataset.incompleto));
     });
+    tbody.querySelectorAll('button[data-anular]').forEach(btn=>{
+      btn.addEventListener('click', ()=> darIntentoExtra(btn.dataset.anular));
+    });
+  }
+
+  /**
+   * "Dar un intento extra" = anular (no borrar) este intento completado, para que deje de
+   * contar contra el límite de intentos permitidos. El estudiante puede volver a presentar
+   * la actividad; este intento queda guardado igual, marcado como anulado, para tu registro.
+   * No requiere tocar ningún taller — todos ya cuentan solo los intentos con estado COMPLETADO.
+   */
+  async function darIntentoExtra(intentoId){
+    const item = todosLosIntentos.find(x=>x.id===intentoId);
+    const nombreCompleto = item ? `${item.nombre} ${item.apellidos} (doc. ${item.documento||'—'})` : intentoId;
+    if(!confirm(`¿Dar un intento extra a ${nombreCompleto}? Este intento queda anulado (no borrado) y ya no cuenta contra su límite de intentos.`)) return;
+    try{
+      await db.collection('intentos').doc(intentoId).update({ estado:'ANULADO_POR_DOCENTE' });
+      setHint('Listo, se le dio un intento extra. Ya puede volver a presentar la actividad.', 'ok');
+      cargarIntentos();
+    }catch(err){
+      setHint('No se pudo anular el intento: ' + err.message, 'err');
+    }
   }
 
   const PUNTOS_MAXIMOS_ = PUNTOS_MAXIMOS;
@@ -351,14 +385,16 @@
     const grado = document.getElementById('filtroGrado').value;
     const trimestre = document.getElementById('filtroTrimestre').value;
     const actividad = document.getElementById('filtroActividad').value;
+    const documentoBuscado = document.getElementById('filtroDocumento').value.trim();
     const filtrados = todosLosIntentos.filter(x =>
       (!curso || String(x.curso)===curso) &&
       (!materia || x.materia===materia) &&
       (!grado || x.grado===grado) &&
       (!trimestre || String(x.trimestre)===trimestre) &&
-      (!actividad || x.actividad===actividad)
+      (!actividad || x.actividad===actividad) &&
+      (!documentoBuscado || String(x.documento||'').includes(documentoBuscado))
     );
-    const encabezados = ['Materia','Grado','Trimestre','Actividad','Apellidos','Nombres','Curso','Version','Estado',
+    const encabezados = ['Materia','Grado','Trimestre','Actividad','Apellidos','Nombres','Documento','Curso','Version','Estado',
       'Aciertos','Nota','Aprobado','TiempoUsado','FueraDeTiempo','Inicio','Fin','DetalleRespuestas'];
     const filas = filtrados.map(x => {
       let detalle = '';
@@ -368,7 +404,7 @@
       }catch(e){ detalle = ''; }
       return [
         x.materia||'', x.grado||'', x.trimestre??'', x.actividad||'',
-        x.apellidos||'', x.nombre||'', x.curso||'', x.version||'', x.estado||'',
+        x.apellidos||'', x.nombre||'', x.documento||'', x.curso||'', x.version||'', x.estado||'',
         x.puntos ?? '', x.nota ?? '', x.aprobado===true?'Si':(x.aprobado===false?'No':''),
         fmtTiempo(x.segundosUsados), x.fueraDeTiempo?'Si':'No', fmtFecha(x.inicio), fmtFecha(x.fin), detalle
       ];
