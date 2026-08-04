@@ -122,6 +122,8 @@
     <input type="text" id="fNombre" placeholder="Ej: Juan Camilo">
     <label>Apellidos completos</label>
     <input type="text" id="fApellidos" placeholder="Ej: Pérez Gómez">
+    <label>Número de documento de identidad</label>
+    <input type="text" id="fDocumento" placeholder="Ej: 1010123456" inputmode="numeric">
     <label>Curso</label>
     <select id="fCurso">
       <option value="">Selecciona...</option>
@@ -249,7 +251,7 @@ async function arrancarFlujo_(correo){
   }
 
   const enProgresoQ = await db.collection('intentos')
-    .where('correo','==',correo).where('estado','==','EN_PROGRESO').limit(1).get();
+    .where('correo','==',correo).where('actividad','==',ETIQUETA_ACTIVIDAD.actividad).where('estado','==','EN_PROGRESO').limit(1).get();
   if(!enProgresoQ.empty){
     const doc = enProgresoQ.docs[0];
     const d = doc.data();
@@ -262,7 +264,7 @@ async function arrancarFlujo_(correo){
   }
 
   const completadosQ = await db.collection('intentos')
-    .where('correo','==',correo).where('estado','==','COMPLETADO').get();
+    .where('correo','==',correo).where('actividad','==',ETIQUETA_ACTIVIDAD.actividad).where('estado','==','COMPLETADO').get();
   const completados = completadosQ.size;
   if(completados >= SERVER.config.intentosPermitidos){
     let mejor = 0;
@@ -457,9 +459,10 @@ const UNIT = 34;
   document.getElementById('btnComenzar').addEventListener('click', async ()=>{
     const nombre = document.getElementById('fNombre').value.trim();
     const apellidos = document.getElementById('fApellidos').value.trim();
+    const documento = document.getElementById('fDocumento').value.trim();
     const curso = document.getElementById('fCurso').value;
-    if(!nombre || !apellidos || !curso){
-      document.getElementById('identHint').textContent = 'Completa nombre, apellidos y curso.';
+    if(!nombre || !apellidos || !documento || !curso){
+      document.getElementById('identHint').textContent = 'Completa nombre, apellidos, documento y curso.';
       return;
     }
     document.getElementById('btnComenzar').disabled = true;
@@ -469,7 +472,7 @@ const UNIT = 34;
       const correo = SERVER.correo;
       const version = asignarVersion_(correo, window.__numeroIntentosPrevios || 0);
       const nuevoDoc = {
-        correo, nombre, apellidos, curso, version,
+        correo, nombre, apellidos, documento, curso, version,
         ...ETIQUETA_ACTIVIDAD,
         estado: 'EN_PROGRESO',
         inicio: firebase.firestore.FieldValue.serverTimestamp(),
