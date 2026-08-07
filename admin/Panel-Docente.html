@@ -285,6 +285,7 @@
         accion = (x.respuestasJSON ? `<button class="btn secondary" style="padding:4px 8px;font-size:0.75rem;" data-id="${x.id}">Recalcular</button>` : '')
           + ` <button class="btn secondary" style="padding:4px 8px;font-size:0.75rem;" data-anular="${x.id}">🎁 Dar intento extra</button>`;
       }
+      accion += ` <button class="btn warn" style="padding:4px 8px;font-size:0.75rem;" data-eliminar="${x.id}">🗑 Eliminar</button>`;
       tr.innerHTML = `
         <td>${x.materia||''}</td><td>${x.grado||''}</td><td>${x.trimestre??''}</td><td>${x.actividad||''}</td>
         <td>${x.apellidos||''}</td><td>${x.nombre||''}</td><td>${x.documento||''}</td><td>${x.curso||''}</td><td>${x.version||''}</td>
@@ -307,8 +308,28 @@
     tbody.querySelectorAll('button[data-anular]').forEach(btn=>{
       btn.addEventListener('click', ()=> darIntentoExtra(btn.dataset.anular));
     });
+    tbody.querySelectorAll('button[data-eliminar]').forEach(btn=>{
+      btn.addEventListener('click', ()=> eliminarIntento(btn.dataset.eliminar));
+    });
   }
 
+  /**
+   * Elimina el intento PARA SIEMPRE (a diferencia de "Dar intento extra", que solo lo anula).
+   * Úsalo para registros basura: pruebas, dobles clics, o estudiantes que nunca empezaron
+   * de verdad. Pide confirmación explícita porque no se puede deshacer.
+   */
+  async function eliminarIntento(intentoId){
+    const item = todosLosIntentos.find(x=>x.id===intentoId);
+    const nombreCompleto = item ? `${item.nombre} ${item.apellidos} (doc. ${item.documento||'—'}, ${item.actividad||''})` : intentoId;
+    if(!confirm(`¿ELIMINAR PARA SIEMPRE este intento de ${nombreCompleto}? Esta acción no se puede deshacer. Si solo quieres darle otra oportunidad, usa "Dar intento extra" en vez de esto.`)) return;
+    try{
+      await db.collection('intentos').doc(intentoId).delete();
+      setHint('Intento eliminado permanentemente.', 'ok');
+      cargarIntentos();
+    }catch(err){
+      setHint('No se pudo eliminar: ' + err.message, 'err');
+    }
+  }
   /**
    * "Dar un intento extra" = anular (no borrar) este intento completado, para que deje de
    * contar contra el límite de intentos permitidos. El estudiante puede volver a presentar
