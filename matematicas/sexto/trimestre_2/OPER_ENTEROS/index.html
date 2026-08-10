@@ -29,7 +29,7 @@
   #hint{min-height:20px; font-size:0.82rem; font-weight:600; margin-top:6px;}
   #hint.err{color:var(--bad);} #hint.ok{color:var(--accent);}
   .canvas-wrap{background:var(--card); border:2px solid var(--ink); border-radius:8px; padding:6px; overflow-x:auto;}
-  canvas{display:block; touch-action:none; cursor:crosshair; width:100%; height:auto; max-width:640px; margin:0 auto;}
+  canvas{display:block; touch-action:pan-y; cursor:crosshair; width:100%; height:auto; max-width:640px; min-width:480px; margin:0 auto;}
   .toolbar{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
   .tool-btn{border:2px solid var(--ink); background:var(--card); padding:8px 12px; border-radius:6px; font-weight:700; font-size:0.82rem; cursor:pointer;}
   .tool-btn.active{background:var(--accent); color:#fff; border-color:var(--accent-dark);}
@@ -165,7 +165,7 @@
    Firebase — reemplaza a Code.gs / Apps Script por completo
    ============================================================ */
 const DOMINIO_INSTITUCIONAL = 'colcompartirsubaied.edu.co';
-const VERSION_CODIGO = 'v1-firebase (2026-08-01)';
+const VERSION_CODIGO = 'matematicas-enteros · 2026-08-10b (scroll+zoom)';
 
 // ============================================================
 // 🏷️ ETIQUETA DE ESTA ACTIVIDAD — cámbiala en cada nueva actividad/copia.
@@ -193,13 +193,24 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 const SERVER = { correo: null, version: VERSION_CODIGO, config: {}, intentoPrevio: null };
+document.addEventListener('DOMContentLoaded', ()=>{
+  const el = document.getElementById('versionTxt');
+  if(el) el.textContent = 'código ' + VERSION_CODIGO;
+});
+if(document.readyState !== 'loading'){
+  const el = document.getElementById('versionTxt');
+  if(el) el.textContent = 'código ' + VERSION_CODIGO;
+}
 
 document.getElementById('btnLogin').addEventListener('click', ()=>{
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ hd: DOMINIO_INSTITUCIONAL }); // sugiere el dominio en la pantalla de Google
   document.getElementById('loginHint').textContent = '';
   auth.signInWithPopup(provider).catch(err=>{
-    document.getElementById('loginHint').textContent = 'No se pudo iniciar sesión: ' + err.message;
+    const esErrorDeAlmacenamiento = /missing initial state|web-storage-unsupported|storage/i.test(err.message||'') || err.code==='auth/web-storage-unsupported';
+    document.getElementById('loginHint').textContent = esErrorDeAlmacenamiento
+      ? 'Tu navegador está bloqueando el inicio de sesión. Copia este enlace y ábrelo directo en Chrome o Safari (no desde WhatsApp, Instagram o Classroom), y desactiva el modo incógnito/privado si lo tienes activado. Luego intenta de nuevo.'
+      : 'No se pudo iniciar sesión: ' + err.message;
   });
 });
 
@@ -640,7 +651,7 @@ const UNIT = 34;
   cv.addEventListener('mousedown', e=>{ mouse=canvasPos(e); seguro_(()=> activo && activo.onDown && activo.onDown()); });
   window.addEventListener('mousemove', e=>{ mouse=canvasPos(e); seguro_(()=> activo && activo.onMove && activo.onMove()); });
   window.addEventListener('mouseup', ()=>{ seguro_(()=> activo && activo.onUp && activo.onUp()); });
-  cv.addEventListener('touchstart', e=>{ mouse=canvasPos(e); seguro_(()=> activo && activo.onDown && activo.onDown()); e.preventDefault(); }, {passive:false});
+  cv.addEventListener('touchstart', e=>{ mouse=canvasPos(e); seguro_(()=> activo && activo.onDown && activo.onDown()); if(drag) e.preventDefault(); }, {passive:false});
   window.addEventListener('touchmove', e=>{ if(drag){ mouse=canvasPos(e); seguro_(()=> activo && activo.onMove && activo.onMove()); e.preventDefault(); } }, {passive:false});
   window.addEventListener('touchend', ()=>{ seguro_(()=> activo && activo.onUp && activo.onUp()); }, {passive:false});
 
