@@ -189,6 +189,13 @@ const ETIQUETA_ACTIVIDAD = {
   actividad: 'Construcción de triángulos'
 };
 
+function slugActividad_(nombre){
+  return (nombre||'default').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'default';
+}
+const CONFIG_DOC_ID = slugActividad_(ETIQUETA_ACTIVIDAD.actividad);
+
 const firebaseConfig = {
   apiKey: "AIzaSyCPPHrkjXT3Wcl5duCKFu1IP0gOr0p69-4",
   authDomain: "taller-geometria1.firebaseapp.com",
@@ -238,7 +245,7 @@ auth.onAuthStateChanged(user=>{
 async function arrancarFlujo_(correo){
   document.getElementById('loginCard').classList.add('hidden');
 
-  const configSnap = await db.collection('config').doc('main').get();
+  const configSnap = await db.collection('config').doc(CONFIG_DOC_ID).get();
   const cfgDatos = configSnap.exists ? configSnap.data() : {};
   SERVER.config = {
     fechaApertura: cfgDatos.fechaApertura || null,
@@ -525,7 +532,7 @@ const UNIT = 34;
   let configListener_ = null;
 
   function iniciarCronometro(){
-    configListener_ = db.collection('config').doc('main').onSnapshot(snap=>{
+    configListener_ = db.collection('config').doc(CONFIG_DOC_ID).onSnapshot(snap=>{
       const d = snap.exists ? snap.data() : {};
       pausadaPorDocente = !!d.actividadPausada;
       mostrarOverlayPausa_(pausadaPorDocente);
