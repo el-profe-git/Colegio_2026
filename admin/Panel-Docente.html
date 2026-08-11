@@ -192,8 +192,8 @@
   // Mismo webhook de Notificador.gs, pero usado al revés: aquí el docente escribe
   // y se envía al correo del estudiante. Pega aquí el mismo link /exec y la misma
   // palabra clave que ya configuraste en los talleres.
-  const WEBHOOK_AVISO_URL = ''; // ej: 'https://script.google.com/macros/s/XXXXX/exec'
-  const WEBHOOK_AVISO_TOKEN = ''; // la misma palabra clave que pusiste en Notificador.gs
+  const WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec'; // ej: 'https://script.google.com/macros/s/XXXXX/exec'
+  const WEBHOOK_AVISO_TOKEN = 'AmoAmiFamilia2026'; // la misma palabra clave que pusiste en Notificador.gs
 
   async function enviarMensajeEstudiante(intentoId){
     const item = todosLosIntentos.find(x=>x.id===intentoId);
