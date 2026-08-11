@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel del Docente — Taller de Geometría</title>
+<title>Panel del Docente</title>
 <style>
   :root{
     --paper:#FAFAF7; --ink:#1F2933; --slate:#8592A0;
@@ -11,27 +11,47 @@
   }
   *{box-sizing:border-box;}
   body{margin:0; font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; background:var(--paper); color:var(--ink);}
-  header{padding:14px 18px; border-bottom:2px solid var(--ink);}
-  header h1{margin:0; font-size:1.1rem;}
-  main{max-width:1100px; margin:0 auto; padding:16px;}
-  .card{background:var(--card); border:2px solid var(--ink); border-radius:8px; padding:16px; margin-bottom:16px;}
-  .btn{background:var(--ink); color:#fff; border:none; padding:9px 14px; border-radius:6px; font-weight:700; font-size:0.85rem; cursor:pointer; margin:4px 6px 4px 0;}
+  header{padding:12px 16px; border-bottom:2px solid var(--ink); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;}
+  header h1{margin:0; font-size:1.05rem;}
+  #versionTxt{font-size:0.65rem; color:var(--slate); display:block;}
+  main{max-width:1200px; margin:0 auto; padding:14px;}
+  .card{background:var(--card); border:2px solid var(--ink); border-radius:10px; padding:14px; margin-bottom:16px;}
+  .card h2{margin:0 0 10px 0; font-size:0.95rem; display:flex; align-items:center; gap:6px;}
+  .fila{display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin-bottom:8px;}
+  .campo{display:flex; flex-direction:column; gap:3px;}
+  .campo label{font-size:0.72rem; font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:0.02em;}
+  select, input[type=text], input[type=number]{padding:7px 9px; border:1.5px solid var(--ink); border-radius:6px; font-size:0.85rem; background:#fff;}
+  .btn{background:var(--ink); color:#fff; border:none; padding:9px 14px; border-radius:6px; font-weight:700; font-size:0.8rem; cursor:pointer; white-space:nowrap;}
   .btn.secondary{background:transparent; color:var(--ink); border:2px solid var(--ink);}
   .btn.warn{background:var(--bad); border:none; color:#fff;}
-  .btn:disabled{opacity:0.5; cursor:not-allowed;}
-  table{width:100%; border-collapse:collapse; font-size:0.82rem;}
-  th, td{border:1px solid #ddd; padding:6px 8px; text-align:left;}
-  th{background:#F0EFE9; position:sticky; top:0;}
+  .btn.mini{padding:4px 8px; font-size:0.72rem; border-radius:5px;}
+  .btn:disabled{opacity:0.45; cursor:not-allowed;}
+  .btn:hover:not(:disabled){filter:brightness(1.08);}
+  table{width:100%; border-collapse:collapse; font-size:0.78rem;}
+  th, td{border:1px solid #ddd; padding:5px 7px; text-align:left; vertical-align:middle;}
+  th{background:#F0EFE9; position:sticky; top:0; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.02em;}
   tr:nth-child(even){background:#FAFAF7;}
-  .resumen{display:flex; gap:20px; flex-wrap:wrap; margin-bottom:10px; font-size:0.9rem;}
-  .resumen b{font-size:1.3rem; display:block; color:var(--accent-dark);}
-  select, input[type=number]{padding:6px 8px; border:1.5px solid var(--ink); border-radius:6px;}
+  .tabla-wrap{max-height:520px; overflow:auto; border:1px solid #ddd; border-radius:6px;}
+  .resumen{display:flex; gap:18px; flex-wrap:wrap; margin-bottom:12px;}
+  .resumen div{background:var(--paper); border:1.5px solid #ddd; border-radius:8px; padding:8px 14px; min-width:90px;}
+  .resumen b{font-size:1.25rem; display:block; color:var(--accent-dark);}
+  .resumen span{font-size:0.7rem; color:var(--slate); text-transform:uppercase;}
   .hidden{display:none !important;}
-  .estado-COMPLETADO{color:var(--accent-dark); font-weight:700;}
-  .estado-EN_PROGRESO{color:var(--mustard); font-weight:700;}
-  .tabla-wrap{max-height:520px; overflow:auto; border:1px solid #ddd;}
-  #hint{font-size:0.85rem; margin-top:8px;}
+  .badge{display:inline-block; padding:2px 8px; border-radius:20px; font-size:0.68rem; font-weight:700;}
+  .badge-progreso{background:#FCEED3; color:#8A5A00;}
+  .badge-completado{background:#DCEEE9; color:var(--accent-dark);}
+  .badge-manual{background:#E3E9F2; color:#2C4270;}
+  .badge-anulado{background:#eee; color:var(--slate);}
+  #hint{font-size:0.85rem; margin-top:8px; min-height:20px;}
   #hint.ok{color:var(--accent);} #hint.err{color:var(--bad);}
+  .barra-acciones{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; padding:8px; background:var(--paper); border-radius:8px; border:1px dashed #ccc;}
+  .barra-acciones span{font-size:0.78rem; color:var(--slate);}
+  @media (max-width:640px){
+    .fila{flex-direction:column; align-items:stretch;}
+    .campo{width:100%;}
+    select, input[type=text]{width:100%;}
+    table{font-size:0.7rem;}
+  }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -39,81 +59,122 @@
 </head>
 <body>
 
-<header style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-  <h1>📊 Panel del Docente — Taller de Geometría</h1>
-  <button class="btn secondary" id="btnCerrarSesion" style="margin:0;">🔒 Cerrar sesión</button>
+<header>
+  <div>
+    <h1>📊 Panel del Docente</h1>
+    <span id="versionTxt"></span>
+  </div>
+  <button class="btn secondary" id="btnCerrarSesion">🔒 Cerrar sesión</button>
 </header>
 
 <main>
   <div class="card" id="loginCard">
-    <p>Inicia sesión con la cuenta que registraste como docente en <code>firestore.rules</code>.</p>
+    <p>Inicia sesión con tu cuenta de docente.</p>
     <button class="btn" id="btnLogin">Iniciar sesión con Google</button>
     <div id="loginHint" style="color:var(--bad); font-size:0.85rem; margin-top:8px;"></div>
   </div>
 
   <div class="hidden" id="panel">
+
+    <!-- ============ CATEGORÍA 1: CONFIGURACIÓN POR ACTIVIDAD ============ -->
     <div class="card">
-      <h2 style="margin-top:0;">Configuración del taller</h2>
-      <div id="configTxt" style="font-size:0.85rem; color:var(--slate); margin-bottom:10px;"></div>
-      <button class="btn" id="btnPausar">⏸ Pausar actividad</button>
-      <button class="btn secondary" id="btnReanudar">▶ Reanudar actividad</button>
-      <button class="btn warn" id="btnCerrar">🔒 Cerrar taller</button>
-      <button class="btn secondary" id="btnAbrir">🔓 Abrir taller</button>
-      <button class="btn secondary" id="btnQuitarTiempo">⏱ Quitar límite de tiempo</button>
-      <br>
-      <label style="font-size:0.85rem; font-weight:600;">Minutos por intento: </label>
-      <input type="number" id="inputMinutos" style="width:80px;">
-      <button class="btn secondary" id="btnPonerTiempo">Aplicar minutos</button>
-      <div id="hint"></div>
+      <h2>⚙️ Configuración — por actividad</h2>
+      <div class="fila">
+        <div class="campo">
+          <label>Actividad a configurar</label>
+          <select id="selectActividadConfig" style="min-width:260px;"></select>
+        </div>
+        <button class="btn secondary mini" id="btnRefrescarActividades">🔄 Actualizar lista</button>
+      </div>
+      <div id="configActualTxt" style="font-size:0.82rem; color:var(--slate); margin:8px 0;"></div>
+      <div class="fila">
+        <button class="btn" id="btnPausar">⏸ Pausar esta actividad</button>
+        <button class="btn secondary" id="btnReanudar">▶ Reanudar</button>
+        <button class="btn warn" id="btnCerrar">🔒 Cerrar esta actividad</button>
+        <button class="btn secondary" id="btnAbrir">🔓 Abrir</button>
+        <button class="btn secondary" id="btnQuitarTiempo">⏱ Sin límite de tiempo</button>
+      </div>
+      <div class="fila">
+        <div class="campo">
+          <label>Minutos por intento</label>
+          <input type="number" id="inputMinutos" style="width:100px;">
+        </div>
+        <button class="btn secondary" id="btnPonerTiempo">Aplicar minutos</button>
+      </div>
+      <div style="font-size:0.72rem; color:var(--slate);">
+        💡 Cada actividad (triángulos, física, matemáticas…) tiene su propia configuración independiente — pausar o cerrar una <b>no afecta a las demás</b>. La lista de arriba se llena sola con cualquier actividad nueva que se cree.
+      </div>
     </div>
 
+    <!-- ============ CATEGORÍA 2: FILTROS Y BÚSQUEDA ============ -->
     <div class="card">
-      <h2 style="margin-top:0;">Resultados</h2>
-      <div class="resumen">
-        <div>Total intentos<b id="rTotal">-</b></div>
-        <div>Completados<b id="rCompletados">-</b></div>
-        <div>En progreso<b id="rProgreso">-</b></div>
-        <div>Aprobados<b id="rAprobados">-</b></div>
-        <div>Promedio<b id="rPromedio">-</b></div>
+      <h2>🔍 Filtros y búsqueda</h2>
+      <div class="fila">
+        <div class="campo"><label>Materia</label><select id="filtroMateria"><option value="">Todas</option></select></div>
+        <div class="campo"><label>Grado</label><select id="filtroGrado"><option value="">Todos</option></select></div>
+        <div class="campo"><label>Trimestre</label><select id="filtroTrimestre"><option value="">Todos</option></select></div>
+        <div class="campo"><label>Curso</label><select id="filtroCurso"><option value="">Todos</option></select></div>
+        <div class="campo"><label>Actividad</label><select id="filtroActividad"><option value="">Todas</option></select></div>
+        <div class="campo">
+          <label>Estado</label>
+          <select id="filtroEstado">
+            <option value="">Todos</option>
+            <option value="EN_PROGRESO">En progreso</option>
+            <option value="COMPLETADO">Completado</option>
+            <option value="COMPLETADO_MANUAL">Completado (no entregó, calificado manual)</option>
+            <option value="ANULADO_POR_DOCENTE">Anulado</option>
+          </select>
+        </div>
       </div>
-      <label style="font-size:0.85rem; font-weight:600;">Materia: </label>
-      <select id="filtroMateria"><option value="">Todas</option></select>
-      <label style="font-size:0.85rem; font-weight:600;">Grado: </label>
-      <select id="filtroGrado"><option value="">Todos</option></select>
-      <label style="font-size:0.85rem; font-weight:600;">Trimestre: </label>
-      <select id="filtroTrimestre"><option value="">Todos</option></select>
-      <label style="font-size:0.85rem; font-weight:600;">Actividad: </label>
-      <select id="filtroActividad"><option value="">Todas</option></select>
-      <br>
-      <label style="font-size:0.85rem; font-weight:600;">Curso: </label>
-      <select id="filtroCurso">
-        <option value="">Todos</option>
-        <option value="601">601</option>
-        <option value="602">602</option>
-        <option value="603">603</option>
-      </select>
-      <label style="font-size:0.85rem; font-weight:600;">Buscar por documento: </label>
-      <input type="text" id="filtroDocumento" placeholder="Número de documento" style="width:160px;">
-      <button class="btn secondary" id="btnRecargar">🔄 Recargar datos</button>
-      <button class="btn" id="btnExportar">📥 Exportar a CSV (Excel)</button>
+      <div class="fila">
+        <div class="campo"><label>Buscar (nombre, apellido o documento)</label><input type="text" id="filtroTexto" placeholder="Escribe para buscar…" style="width:260px;"></div>
+        <button class="btn secondary" id="btnRecargar">🔄 Recargar datos</button>
+        <button class="btn" id="btnExportar">📥 Exportar a CSV (Excel)</button>
+      </div>
+    </div>
+
+    <!-- ============ CATEGORÍA 3: RESULTADOS Y ACCIONES ============ -->
+    <div class="card">
+      <h2>📋 Resultados</h2>
+      <div class="resumen">
+        <div><b id="rTotal">-</b><span>Total</span></div>
+        <div><b id="rCompletados">-</b><span>Completados</span></div>
+        <div><b id="rProgreso">-</b><span>En progreso</span></div>
+        <div><b id="rAprobados">-</b><span>Aprobados</span></div>
+        <div><b id="rPromedio">-</b><span>Promedio</span></div>
+      </div>
+
+      <div class="barra-acciones">
+        <label style="display:flex; align-items:center; gap:5px; font-size:0.78rem;">
+          <input type="checkbox" id="chkTodos"> Seleccionar todo lo visible
+        </label>
+        <span id="contadorSeleccion">0 seleccionados</span>
+        <button class="btn secondary mini" id="btnRecalcularSeleccion" disabled>🔁 Recalcular seleccionados</button>
+        <button class="btn warn mini" id="btnEliminarSeleccion" disabled>🗑 Eliminar seleccionados</button>
+      </div>
+
       <div class="tabla-wrap">
         <table id="tabla">
           <thead>
             <tr>
+              <th><input type="checkbox" id="chkTodosHeader"></th>
               <th>Materia</th><th>Grado</th><th>Trim.</th><th>Actividad</th>
               <th>Apellidos</th><th>Nombres</th><th>Documento</th><th>Curso</th><th>Versión</th><th>Estado</th>
-              <th>Aciertos</th><th>Nota</th><th>Aprobado</th><th>Tiempo</th><th>Fuera de tiempo</th><th>Inicio</th><th>Fin</th><th></th>
+              <th>Aciertos</th><th>Nota</th><th>Aprobado</th><th>Tiempo</th><th>Fuera de tiempo</th><th>Inicio</th><th>Fin</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody id="tablaBody"></tbody>
         </table>
       </div>
+      <div id="hint"></div>
     </div>
   </div>
 </main>
 
 <script>
 (function(){
+  const VERSION_CODIGO = 'panel-docente · 2026-08-10c (config por actividad + checklist)';
+
   const firebaseConfig = {
     apiKey: "AIzaSyCPPHrkjXT3Wcl5duCKFu1IP0gOr0p69-4",
     authDomain: "taller-geometria1.firebaseapp.com",
@@ -126,16 +187,52 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
   const PUNTOS_MAXIMOS = 20;
-
-  // Cambia esto por tu mismo correo docente (el que pusiste en firestore.rules).
   const CORREO_DOCENTE_ESPERADO = 'leonardo.antolinez@colcompartirsubaied.edu.co';
 
-  // La sesión dura solo mientras la pestaña esté abierta — al cerrar el navegador,
-  // queda deslogueado automáticamente. Así, en un computador compartido/de sala de
-  // sistemas, no queda una sesión abierta esperando a que alguien más la use.
+  // Mismo webhook de Notificador.gs, pero usado al revés: aquí el docente escribe
+  // y se envía al correo del estudiante. Pega aquí el mismo link /exec y la misma
+  // palabra clave que ya configuraste en los talleres.
+  const WEBHOOK_AVISO_URL = ''; // ej: 'https://script.google.com/macros/s/XXXXX/exec'
+  const WEBHOOK_AVISO_TOKEN = ''; // la misma palabra clave que pusiste en Notificador.gs
+
+  async function enviarMensajeEstudiante(intentoId){
+    const item = todosLosIntentos.find(x=>x.id===intentoId);
+    if(!item || !item.correo){ setHint('Ese intento no tiene un correo de estudiante registrado.', 'err'); return; }
+    if(!WEBHOOK_AVISO_URL || !WEBHOOK_AVISO_TOKEN){
+      setHint('Falta configurar WEBHOOK_AVISO_URL y WEBHOOK_AVISO_TOKEN al inicio del script del Panel (mismo link y clave que usas en los talleres).', 'err');
+      return;
+    }
+    const mensaje = prompt(`Mensaje para ${item.nombre} ${item.apellidos} (${item.correo}):`);
+    if(!mensaje || !mensaje.trim()) return;
+    try{
+      await fetch(WEBHOOK_AVISO_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          token: WEBHOOK_AVISO_TOKEN,
+          tipo: 'mensaje_docente',
+          correoEstudiante: item.correo,
+          asunto: `📩 Mensaje sobre "${item.actividad||'tu actividad'}"`,
+          mensaje: mensaje.trim()
+        })
+      });
+      setHint(`Mensaje enviado a ${item.correo}.`, 'ok');
+    }catch(err){
+      setHint('No se pudo enviar el mensaje: ' + err.message, 'err');
+    }
+  }
+
+  document.getElementById('versionTxt').textContent = 'código ' + VERSION_CODIGO;
+
   auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
+  function slugActividad_(nombre){
+    return (nombre||'default').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'default';
+  }
+
   let todosLosIntentos = [];
+  let seleccionados = new Set();
 
   document.getElementById('btnLogin').addEventListener('click', ()=>{
     const provider = new firebase.auth.GoogleAuthProvider();
@@ -147,13 +244,12 @@
   auth.onAuthStateChanged(user=>{
     if(!user) return;
     if(user.email !== CORREO_DOCENTE_ESPERADO){
-      document.getElementById('loginHint').textContent = 'Esta cuenta (' + user.email + ') no tiene permiso para ver el Panel. Cierra sesión de Google e intenta con la cuenta docente correcta.';
+      document.getElementById('loginHint').textContent = 'Esta cuenta (' + user.email + ') no tiene permiso para ver el Panel.';
       auth.signOut();
       return;
     }
     document.getElementById('loginCard').classList.add('hidden');
     document.getElementById('panel').classList.remove('hidden');
-    cargarConfig();
     cargarIntentos();
   });
 
@@ -169,12 +265,27 @@
     el.textContent = msg; el.className = kind || '';
   }
 
-  async function cargarConfig(){
+  /* ============================================================
+     CATEGORÍA 1 — configuración por actividad
+     ============================================================ */
+  function poblarSelectorActividades(){
+    const sel = document.getElementById('selectActividadConfig');
+    const actual = sel.value;
+    const nombres = Array.from(new Set(todosLosIntentos.map(x=>x.actividad).filter(Boolean))).sort();
+    sel.innerHTML = nombres.map(n=>`<option value="${n}">${n}</option>`).join('') || '<option value="">(sin actividades registradas aún)</option>';
+    if(nombres.includes(actual)) sel.value = actual;
+    cargarConfigDeActividad();
+  }
+
+  async function cargarConfigDeActividad(){
+    const nombreActividad = document.getElementById('selectActividadConfig').value;
+    if(!nombreActividad){ document.getElementById('configActualTxt').textContent = 'Selecciona una actividad.'; return; }
+    const docId = slugActividad_(nombreActividad);
     try{
-      const snap = await db.collection('config').doc('main').get();
+      const snap = await db.collection('config').doc(docId).get();
       const d = snap.exists ? snap.data() : {};
-      document.getElementById('configTxt').innerHTML =
-        `Pausada: <b>${d.actividadPausada ? 'SÍ' : 'no'}</b> · Cerrada: <b>${d.cerradoManual ? 'SÍ' : 'no'}</b> · ` +
+      document.getElementById('configActualTxt').innerHTML =
+        `<b>${nombreActividad}</b> — Pausada: <b>${d.actividadPausada?'SÍ':'no'}</b> · Cerrada: <b>${d.cerradoManual?'SÍ':'no'}</b> · ` +
         `Minutos por intento: <b>${d.minutosPorIntento || 'sin límite'}</b> · Nota mínima: <b>${d.notaMinima ?? '-'}</b> · Intentos permitidos: <b>${d.intentosPermitidos ?? '-'}</b>`;
       document.getElementById('inputMinutos').value = d.minutosPorIntento || '';
     }catch(err){
@@ -182,49 +293,67 @@
     }
   }
 
-  async function actualizarConfig(cambios){
+  async function actualizarConfigActividad(cambios){
+    const nombreActividad = document.getElementById('selectActividadConfig').value;
+    if(!nombreActividad){ setHint('Elige primero una actividad para configurar.', 'err'); return; }
+    const docId = slugActividad_(nombreActividad);
     try{
-      await db.collection('config').doc('main').set(cambios, {merge:true});
-      setHint('Listo, se actualizó la configuración.', 'ok');
-      cargarConfig();
+      await db.collection('config').doc(docId).set(cambios, {merge:true});
+      setHint(`Listo, se actualizó "${nombreActividad}".`, 'ok');
+      cargarConfigDeActividad();
     }catch(err){
       setHint('No se pudo actualizar: ' + err.message, 'err');
     }
   }
 
-  document.getElementById('btnPausar').addEventListener('click', ()=> actualizarConfig({actividadPausada:true}));
-  document.getElementById('btnReanudar').addEventListener('click', ()=> actualizarConfig({actividadPausada:false}));
-  document.getElementById('btnCerrar').addEventListener('click', ()=> actualizarConfig({cerradoManual:true}));
-  document.getElementById('btnAbrir').addEventListener('click', ()=> actualizarConfig({cerradoManual:false}));
-  document.getElementById('btnQuitarTiempo').addEventListener('click', ()=> actualizarConfig({minutosPorIntento:null}));
+  document.getElementById('selectActividadConfig').addEventListener('change', cargarConfigDeActividad);
+  document.getElementById('btnRefrescarActividades').addEventListener('click', cargarIntentos);
+  document.getElementById('btnPausar').addEventListener('click', ()=> actualizarConfigActividad({actividadPausada:true}));
+  document.getElementById('btnReanudar').addEventListener('click', ()=> actualizarConfigActividad({actividadPausada:false}));
+  document.getElementById('btnCerrar').addEventListener('click', ()=> actualizarConfigActividad({cerradoManual:true}));
+  document.getElementById('btnAbrir').addEventListener('click', ()=> actualizarConfigActividad({cerradoManual:false}));
+  document.getElementById('btnQuitarTiempo').addEventListener('click', ()=> actualizarConfigActividad({minutosPorIntento:null}));
   document.getElementById('btnPonerTiempo').addEventListener('click', ()=>{
     const v = parseInt(document.getElementById('inputMinutos').value, 10);
     if(!v || v<=0){ setHint('Escribe un número de minutos válido.', 'err'); return; }
-    actualizarConfig({minutosPorIntento:v});
+    actualizarConfigActividad({minutosPorIntento:v});
   });
 
-  async function cargarIntentos(){
-    try{
-      const snap = await db.collection('intentos').get();
-      todosLosIntentos = [];
-      snap.forEach(doc=> todosLosIntentos.push({id:doc.id, ...doc.data()}));
-      pintarTabla();
-    }catch(err){
-      setHint('No se pudieron cargar los intentos: ' + err.message, 'err');
-    }
-  }
-  document.getElementById('btnRecargar').addEventListener('click', cargarIntentos);
-  ['filtroCurso','filtroMateria','filtroGrado','filtroTrimestre','filtroActividad'].forEach(id=>{
-    document.getElementById(id).addEventListener('change', pintarTabla);
-  });
-  document.getElementById('filtroDocumento').addEventListener('input', pintarTabla);
-
+  /* ============================================================
+     CATEGORÍA 2 — filtros
+     ============================================================ */
   function poblarFiltro(id, valores){
     const sel = document.getElementById(id);
     const actual = sel.value;
     const opciones = Array.from(new Set(valores.filter(v=>v!==undefined && v!==null && v!=='')));
-    sel.innerHTML = '<option value="">Todas</option>' + opciones.map(v=>`<option value="${v}">${v}</option>`).join('');
+    const placeholder = sel.id==='filtroCurso' ? 'Todos' : (sel.id==='filtroActividad' ? 'Todas' : sel.options[0].textContent);
+    sel.innerHTML = `<option value="">${placeholder}</option>` + opciones.map(v=>`<option value="${v}">${v}</option>`).join('');
     if(opciones.includes(actual)) sel.value = actual;
+  }
+
+  ['filtroCurso','filtroMateria','filtroGrado','filtroTrimestre','filtroActividad','filtroEstado'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', pintarTabla);
+  });
+  document.getElementById('filtroTexto').addEventListener('input', pintarTabla);
+  document.getElementById('btnRecargar').addEventListener('click', cargarIntentos);
+
+  function estadoCategoria(x){
+    if(x.estado==='EN_PROGRESO') return 'EN_PROGRESO';
+    if(x.estado==='ANULADO_POR_DOCENTE') return 'ANULADO_POR_DOCENTE';
+    if(x.estado==='COMPLETADO' && x.entregaIncompleta) return 'COMPLETADO_MANUAL';
+    if(x.estado==='COMPLETADO') return 'COMPLETADO';
+    return x.estado||'';
+  }
+  function badgeEstado(x){
+    const cat = estadoCategoria(x);
+    const mapa = {
+      EN_PROGRESO: ['badge-progreso','En progreso'],
+      COMPLETADO: ['badge-completado','Completado'],
+      COMPLETADO_MANUAL: ['badge-manual','Completado (manual)'],
+      ANULADO_POR_DOCENTE: ['badge-anulado','Anulado'],
+    };
+    const [clase,texto] = mapa[cat] || ['badge-anulado', cat];
+    return `<span class="badge ${clase}">${texto}</span>`;
   }
 
   function fmtFecha(ts){
@@ -238,28 +367,56 @@
     return `${m}:${String(s).padStart(2,'0')}`;
   }
 
-  function pintarTabla(){
-    poblarFiltro('filtroMateria', todosLosIntentos.map(x=>x.materia));
-    poblarFiltro('filtroGrado', todosLosIntentos.map(x=>x.grado));
-    poblarFiltro('filtroTrimestre', todosLosIntentos.map(x=>x.trimestre));
-    poblarFiltro('filtroActividad', todosLosIntentos.map(x=>x.actividad));
-
+  function obtenerFiltrados(){
     const curso = document.getElementById('filtroCurso').value;
     const materia = document.getElementById('filtroMateria').value;
     const grado = document.getElementById('filtroGrado').value;
     const trimestre = document.getElementById('filtroTrimestre').value;
     const actividad = document.getElementById('filtroActividad').value;
-    const documentoBuscado = document.getElementById('filtroDocumento').value.trim();
-
-    const filtrados = todosLosIntentos.filter(x =>
+    const estado = document.getElementById('filtroEstado').value;
+    const texto = document.getElementById('filtroTexto').value.trim().toLowerCase();
+    return todosLosIntentos.filter(x =>
       (!curso || String(x.curso)===curso) &&
       (!materia || x.materia===materia) &&
       (!grado || x.grado===grado) &&
       (!trimestre || String(x.trimestre)===trimestre) &&
       (!actividad || x.actividad===actividad) &&
-      (!documentoBuscado || String(x.documento||'').includes(documentoBuscado))
+      (!estado || estadoCategoria(x)===estado) &&
+      (!texto || `${x.nombre||''} ${x.apellidos||''} ${x.documento||''}`.toLowerCase().includes(texto))
     );
+  }
 
+  /* ============================================================
+     CATEGORÍA 3 — tabla, checklist y acciones masivas
+     ============================================================ */
+  async function cargarIntentos(){
+    try{
+      const snap = await db.collection('intentos').get();
+      todosLosIntentos = [];
+      snap.forEach(doc=> todosLosIntentos.push({id:doc.id, ...doc.data()}));
+      seleccionados.clear();
+      poblarSelectorActividades();
+      pintarTabla();
+    }catch(err){
+      setHint('No se pudieron cargar los intentos: ' + err.message, 'err');
+    }
+  }
+
+  function actualizarBarraSeleccion(){
+    const cnt = seleccionados.size;
+    document.getElementById('contadorSeleccion').textContent = `${cnt} seleccionados`;
+    document.getElementById('btnRecalcularSeleccion').disabled = cnt===0;
+    document.getElementById('btnEliminarSeleccion').disabled = cnt===0;
+  }
+
+  function pintarTabla(){
+    poblarFiltro('filtroMateria', todosLosIntentos.map(x=>x.materia));
+    poblarFiltro('filtroGrado', todosLosIntentos.map(x=>x.grado));
+    poblarFiltro('filtroTrimestre', todosLosIntentos.map(x=>x.trimestre));
+    poblarFiltro('filtroActividad', todosLosIntentos.map(x=>x.actividad));
+    poblarFiltro('filtroCurso', todosLosIntentos.map(x=>x.curso));
+
+    const filtrados = obtenerFiltrados();
     const completados = filtrados.filter(x=>x.estado==='COMPLETADO');
     const aprobados = completados.filter(x=>x.aprobado===true);
     const promedio = completados.length ? (completados.reduce((s,x)=>s+(x.nota||0),0)/completados.length).toFixed(1) : '—';
@@ -278,18 +435,19 @@
       const anulado = x.estado==='ANULADO_POR_DOCENTE';
       let accion = '';
       if(x.estado==='EN_PROGRESO'){
-        accion = `<button class="btn warn" style="padding:4px 8px;font-size:0.75rem;" data-incompleto="${x.id}">Calificar (no entregó)</button>`;
-      }else if(anulado){
-        accion = `<span style="color:var(--slate);font-size:0.75rem;">no cuenta para el límite</span>`;
-      }else{
-        accion = (x.respuestasJSON ? `<button class="btn secondary" style="padding:4px 8px;font-size:0.75rem;" data-id="${x.id}">Recalcular</button>` : '')
-          + ` <button class="btn secondary" style="padding:4px 8px;font-size:0.75rem;" data-anular="${x.id}">🎁 Dar intento extra</button>`;
+        accion = `<button class="btn warn mini" data-incompleto="${x.id}">Calificar (no entregó)</button>`;
+      }else if(!anulado){
+        accion = (x.respuestasJSON ? `<button class="btn secondary mini" data-id="${x.id}">Recalcular</button>` : '')
+          + ` <button class="btn secondary mini" data-anular="${x.id}">🎁 Intento extra</button>`;
       }
-      accion += ` <button class="btn warn" style="padding:4px 8px;font-size:0.75rem;" data-eliminar="${x.id}">🗑 Eliminar</button>`;
+      accion += ` <button class="btn secondary mini" data-mensaje="${x.id}">✉️</button>`;
+      accion += ` <button class="btn warn mini" data-eliminar="${x.id}">🗑</button>`;
+      const marcado = seleccionados.has(x.id) ? 'checked' : '';
       tr.innerHTML = `
+        <td><input type="checkbox" class="chkFila" data-id="${x.id}" ${marcado}></td>
         <td>${x.materia||''}</td><td>${x.grado||''}</td><td>${x.trimestre??''}</td><td>${x.actividad||''}</td>
         <td>${x.apellidos||''}</td><td>${x.nombre||''}</td><td>${x.documento||''}</td><td>${x.curso||''}</td><td>${x.version||''}</td>
-        <td class="estado-${x.estado}" style="${anulado?'opacity:0.55;':''}">${x.estado||''}${x.entregaIncompleta?' (manual)':''}</td>
+        <td>${badgeEstado(x)}</td>
         <td>${x.puntos ?? '—'}</td><td>${x.nota ?? '—'}</td>
         <td>${x.aprobado===true?'Sí':(x.aprobado===false?'No':'—')}</td>
         <td>${fmtTiempo(x.segundosUsados)}</td>
@@ -299,43 +457,89 @@
       `;
       tbody.appendChild(tr);
     });
-    tbody.querySelectorAll('button[data-id]').forEach(btn=>{
-      btn.addEventListener('click', ()=> recalcular(btn.dataset.id));
+
+    tbody.querySelectorAll('button[data-id]').forEach(btn=> btn.addEventListener('click', ()=> recalcular(btn.dataset.id)));
+    tbody.querySelectorAll('button[data-incompleto]').forEach(btn=> btn.addEventListener('click', ()=> calificarIncompleto(btn.dataset.incompleto)));
+    tbody.querySelectorAll('button[data-anular]').forEach(btn=> btn.addEventListener('click', ()=> darIntentoExtra(btn.dataset.anular)));
+    tbody.querySelectorAll('button[data-eliminar]').forEach(btn=> btn.addEventListener('click', ()=> eliminarIntento(btn.dataset.eliminar)));
+    tbody.querySelectorAll('button[data-mensaje]').forEach(btn=> btn.addEventListener('click', ()=> enviarMensajeEstudiante(btn.dataset.mensaje)));
+    tbody.querySelectorAll('.chkFila').forEach(chk=>{
+      chk.addEventListener('change', ()=>{
+        if(chk.checked) seleccionados.add(chk.dataset.id); else seleccionados.delete(chk.dataset.id);
+        actualizarBarraSeleccion();
+        sincronizarCheckTodos();
+      });
     });
-    tbody.querySelectorAll('button[data-incompleto]').forEach(btn=>{
-      btn.addEventListener('click', ()=> calificarIncompleto(btn.dataset.incompleto));
-    });
-    tbody.querySelectorAll('button[data-anular]').forEach(btn=>{
-      btn.addEventListener('click', ()=> darIntentoExtra(btn.dataset.anular));
-    });
-    tbody.querySelectorAll('button[data-eliminar]').forEach(btn=>{
-      btn.addEventListener('click', ()=> eliminarIntento(btn.dataset.eliminar));
-    });
+    actualizarBarraSeleccion();
+    sincronizarCheckTodos();
   }
 
-  /**
-   * Elimina el intento PARA SIEMPRE (a diferencia de "Dar intento extra", que solo lo anula).
-   * Úsalo para registros basura: pruebas, dobles clics, o estudiantes que nunca empezaron
-   * de verdad. Pide confirmación explícita porque no se puede deshacer.
-   */
-  async function eliminarIntento(intentoId){
-    const item = todosLosIntentos.find(x=>x.id===intentoId);
-    const nombreCompleto = item ? `${item.nombre} ${item.apellidos} (doc. ${item.documento||'—'}, ${item.actividad||''})` : intentoId;
-    if(!confirm(`¿ELIMINAR PARA SIEMPRE este intento de ${nombreCompleto}? Esta acción no se puede deshacer. Si solo quieres darle otra oportunidad, usa "Dar intento extra" en vez de esto.`)) return;
+  function sincronizarCheckTodos(){
+    const filas = document.querySelectorAll('.chkFila');
+    const todasMarcadas = filas.length>0 && Array.from(filas).every(f=>f.checked);
+    document.getElementById('chkTodos').checked = todasMarcadas;
+    document.getElementById('chkTodosHeader').checked = todasMarcadas;
+  }
+  function marcarTodosVisibles(marcar){
+    document.querySelectorAll('.chkFila').forEach(chk=>{
+      chk.checked = marcar;
+      if(marcar) seleccionados.add(chk.dataset.id); else seleccionados.delete(chk.dataset.id);
+    });
+    actualizarBarraSeleccion();
+  }
+  document.getElementById('chkTodos').addEventListener('change', e=> marcarTodosVisibles(e.target.checked));
+  document.getElementById('chkTodosHeader').addEventListener('change', e=> marcarTodosVisibles(e.target.checked));
+
+  async function recalcular(intentoId){
     try{
-      await db.collection('intentos').doc(intentoId).delete();
-      setHint('Intento eliminado permanentemente.', 'ok');
+      const item = todosLosIntentos.find(x=>x.id===intentoId);
+      if(!item || !item.respuestasJSON){ setHint('Ese intento no tiene respuestas guardadas para recalcular.', 'err'); return; }
+      const respuestas = JSON.parse(item.respuestasJSON);
+      const puntos = respuestas.filter(r=>r && r.correcta).length;
+      const nota = Math.round((puntos/PUNTOS_MAXIMOS)*5*10)/10;
+      const docId = slugActividad_(item.actividad);
+      const cfgSnap = await db.collection('config').doc(docId).get();
+      const cfg = cfgSnap.exists ? cfgSnap.data() : {};
+      const aprobado = nota >= (cfg.notaMinima || 3.0);
+      await db.collection('intentos').doc(intentoId).update({puntos, nota, aprobado});
+      setHint(`Recalculado: ${puntos}/${PUNTOS_MAXIMOS} → nota ${nota}`, 'ok');
       cargarIntentos();
     }catch(err){
-      setHint('No se pudo eliminar: ' + err.message, 'err');
+      setHint('No se pudo recalcular: ' + err.message, 'err');
     }
   }
-  /**
-   * "Dar un intento extra" = anular (no borrar) este intento completado, para que deje de
-   * contar contra el límite de intentos permitidos. El estudiante puede volver a presentar
-   * la actividad; este intento queda guardado igual, marcado como anulado, para tu registro.
-   * No requiere tocar ningún taller — todos ya cuentan solo los intentos con estado COMPLETADO.
-   */
+
+  async function calificarIncompleto(intentoId){
+    if(!confirm('¿Calificar a este estudiante con lo que alcanzó a responder? Esto cierra su intento como si lo hubiera enviado.')) return;
+    try{
+      const item = todosLosIntentos.find(x=>x.id===intentoId);
+      if(!item){ setHint('No se encontró ese intento.', 'err'); return; }
+      const docId = slugActividad_(item.actividad);
+      const cfgSnap = await db.collection('config').doc(docId).get();
+      const cfg = cfgSnap.exists ? cfgSnap.data() : {};
+      let respuestas = [];
+      try{
+        const progreso = item.progresoJSON ? JSON.parse(item.progresoJSON) : {};
+        respuestas = progreso.respuestas || [];
+      }catch(e){ respuestas = []; }
+      const respuestasCompletas = [];
+      for(let i=0;i<PUNTOS_MAXIMOS;i++){ respuestasCompletas.push(respuestas[i] || {correcta:false, detalle:'(no respondida)'}); }
+      const puntos = respuestasCompletas.filter(r=>r.correcta).length;
+      const nota = Math.round((puntos/PUNTOS_MAXIMOS)*5*10)/10;
+      const aprobado = nota >= (cfg.notaMinima || 3.0);
+      await db.collection('intentos').doc(intentoId).update({
+        estado:'COMPLETADO', entregaIncompleta:true,
+        respuestasJSON: JSON.stringify(respuestasCompletas),
+        puntos, nota, aprobado,
+        fin: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      setHint(`Calificado como entrega incompleta: ${puntos}/${PUNTOS_MAXIMOS} → nota ${nota}`, 'ok');
+      cargarIntentos();
+    }catch(err){
+      setHint('No se pudo calificar: ' + err.message, 'err');
+    }
+  }
+
   async function darIntentoExtra(intentoId){
     const item = todosLosIntentos.find(x=>x.id===intentoId);
     const nombreCompleto = item ? `${item.nombre} ${item.apellidos} (doc. ${item.documento||'—'})` : intentoId;
@@ -349,72 +553,62 @@
     }
   }
 
-  const PUNTOS_MAXIMOS_ = PUNTOS_MAXIMOS;
-
-  /** Cierra y califica a un estudiante que se quedó EN_PROGRESO (no alcanzó a enviar). */
-  async function calificarIncompleto(intentoId){
-    if(!confirm('¿Calificar a este estudiante con lo que alcanzó a responder? Esto cierra su intento como si lo hubiera enviado.')) return;
+  async function eliminarIntento(intentoId){
+    const item = todosLosIntentos.find(x=>x.id===intentoId);
+    const nombreCompleto = item ? `${item.nombre} ${item.apellidos} (doc. ${item.documento||'—'}, ${item.actividad||''})` : intentoId;
+    if(!confirm(`¿ELIMINAR PARA SIEMPRE este intento de ${nombreCompleto}? Esta acción no se puede deshacer.`)) return;
     try{
-      const configSnap = await db.collection('config').doc('main').get();
-      const cfg = configSnap.exists ? configSnap.data() : {};
-      const item = todosLosIntentos.find(x=>x.id===intentoId);
-      if(!item){ setHint('No se encontró ese intento.', 'err'); return; }
-      let respuestas = [];
-      try{
-        const progreso = item.progresoJSON ? JSON.parse(item.progresoJSON) : {};
-        respuestas = progreso.respuestas || [];
-      }catch(e){ respuestas = []; }
-      const respuestasCompletas = [];
-      for(let i=0;i<PUNTOS_MAXIMOS_;i++){ respuestasCompletas.push(respuestas[i] || {correcta:false, detalle:'(no respondida)'}); }
-      const puntos = respuestasCompletas.filter(r=>r.correcta).length;
-      const nota = Math.round((puntos/PUNTOS_MAXIMOS_)*5*10)/10;
-      const aprobado = nota >= (cfg.notaMinima || 3.0);
-      await db.collection('intentos').doc(intentoId).update({
-        estado:'COMPLETADO', entregaIncompleta:true,
-        respuestasJSON: JSON.stringify(respuestasCompletas),
-        puntos, nota, aprobado,
-        fin: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      setHint(`Calificado como entrega incompleta: ${puntos}/${PUNTOS_MAXIMOS_} → nota ${nota}`, 'ok');
+      await db.collection('intentos').doc(intentoId).delete();
+      setHint('Intento eliminado permanentemente.', 'ok');
       cargarIntentos();
     }catch(err){
-      setHint('No se pudo calificar: ' + err.message, 'err');
+      setHint('No se pudo eliminar: ' + err.message, 'err');
     }
   }
 
-  async function recalcular(intentoId){
-    try{
-      const configSnap = await db.collection('config').doc('main').get();
-      const cfg = configSnap.exists ? configSnap.data() : {};
-      const item = todosLosIntentos.find(x=>x.id===intentoId);
-      if(!item || !item.respuestasJSON){ setHint('Ese intento no tiene respuestas guardadas para recalcular.', 'err'); return; }
-      const respuestas = JSON.parse(item.respuestasJSON);
-      const puntos = respuestas.filter(r=>r && r.correcta).length;
-      const nota = Math.round((puntos/PUNTOS_MAXIMOS)*5*10)/10;
-      const aprobado = nota >= (cfg.notaMinima || 3.0);
-      await db.collection('intentos').doc(intentoId).update({puntos, nota, aprobado});
-      setHint(`Recalculado: ${puntos}/${PUNTOS_MAXIMOS} → nota ${nota}`, 'ok');
-      cargarIntentos();
-    }catch(err){
-      setHint('No se pudo recalcular: ' + err.message, 'err');
+  document.getElementById('btnRecalcularSeleccion').addEventListener('click', async ()=>{
+    const ids = Array.from(seleccionados);
+    if(!ids.length) return;
+    if(!confirm(`¿Recalcular la nota de ${ids.length} intento(s) seleccionados?`)) return;
+    let ok=0, fallo=0;
+    for(const id of ids){
+      const item = todosLosIntentos.find(x=>x.id===id);
+      if(!item || !item.respuestasJSON){ fallo++; continue; }
+      try{
+        const respuestas = JSON.parse(item.respuestasJSON);
+        const puntos = respuestas.filter(r=>r && r.correcta).length;
+        const nota = Math.round((puntos/PUNTOS_MAXIMOS)*5*10)/10;
+        const cfgSnap = await db.collection('config').doc(slugActividad_(item.actividad)).get();
+        const cfg = cfgSnap.exists ? cfgSnap.data() : {};
+        const aprobado = nota >= (cfg.notaMinima || 3.0);
+        await db.collection('intentos').doc(id).update({puntos, nota, aprobado});
+        ok++;
+      }catch(e){ fallo++; }
     }
+    setHint(`Recalculados: ${ok}. Sin datos suficientes: ${fallo}.`, ok>0?'ok':'err');
+    cargarIntentos();
+  });
+
+  document.getElementById('btnEliminarSeleccion').addEventListener('click', async ()=>{
+    const ids = Array.from(seleccionados);
+    if(!ids.length) return;
+    if(!confirm(`¿ELIMINAR PARA SIEMPRE ${ids.length} intento(s) seleccionados? Esta acción no se puede deshacer.`)) return;
+    let ok=0;
+    for(const id of ids){
+      try{ await db.collection('intentos').doc(id).delete(); ok++; }catch(e){ /* seguimos con los demás */ }
+    }
+    setHint(`Eliminados: ${ok} de ${ids.length}.`, 'ok');
+    cargarIntentos();
+  });
+
+  function badgeEstadoTexto(x){
+    const cat = estadoCategoria(x);
+    const mapa = { EN_PROGRESO:'En progreso', COMPLETADO:'Completado', COMPLETADO_MANUAL:'Completado (manual)', ANULADO_POR_DOCENTE:'Anulado' };
+    return mapa[cat] || cat;
   }
 
   document.getElementById('btnExportar').addEventListener('click', ()=>{
-    const curso = document.getElementById('filtroCurso').value;
-    const materia = document.getElementById('filtroMateria').value;
-    const grado = document.getElementById('filtroGrado').value;
-    const trimestre = document.getElementById('filtroTrimestre').value;
-    const actividad = document.getElementById('filtroActividad').value;
-    const documentoBuscado = document.getElementById('filtroDocumento').value.trim();
-    const filtrados = todosLosIntentos.filter(x =>
-      (!curso || String(x.curso)===curso) &&
-      (!materia || x.materia===materia) &&
-      (!grado || x.grado===grado) &&
-      (!trimestre || String(x.trimestre)===trimestre) &&
-      (!actividad || x.actividad===actividad) &&
-      (!documentoBuscado || String(x.documento||'').includes(documentoBuscado))
-    );
+    const filtrados = obtenerFiltrados();
     const encabezados = ['Materia','Grado','Trimestre','Actividad','Apellidos','Nombres','Documento','Curso','Version','Estado',
       'Aciertos','Nota','Aprobado','TiempoUsado','FueraDeTiempo','Inicio','Fin','DetalleRespuestas'];
     const filas = filtrados.map(x => {
@@ -425,7 +619,7 @@
       }catch(e){ detalle = ''; }
       return [
         x.materia||'', x.grado||'', x.trimestre??'', x.actividad||'',
-        x.apellidos||'', x.nombre||'', x.documento||'', x.curso||'', x.version||'', x.estado||'',
+        x.apellidos||'', x.nombre||'', x.documento||'', x.curso||'', x.version||'', badgeEstadoTexto(x),
         x.puntos ?? '', x.nota ?? '', x.aprobado===true?'Si':(x.aprobado===false?'No':''),
         fmtTiempo(x.segundosUsados), x.fueraDeTiempo?'Si':'No', fmtFecha(x.inicio), fmtFecha(x.fin), detalle
       ];
