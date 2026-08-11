@@ -1003,8 +1003,8 @@ const UNIT = 34;
     });
   });
   document.getElementById('btnDeshacer').addEventListener('click', ()=>{ activo && activo.undo && activo.undo(); });
-  const WEBHOOK_AVISO_URL = ''; // <-- pega aquí el enlace /exec del Notificador.gs
-  const WEBHOOK_AVISO_TOKEN = 'cambia-esta-palabra-clave'; // debe ser igual al de Notificador.gs
+  const WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec'; // <-- pega aquí el enlace /exec del Notificador.gs
+  const WEBHOOK_AVISO_TOKEN = 'AmoAmiFamilia2026'; // debe ser igual al de Notificador.gs
 
   document.getElementById('btnAvisar').addEventListener('click', async ()=>{
     const btn = document.getElementById('btnAvisar');
