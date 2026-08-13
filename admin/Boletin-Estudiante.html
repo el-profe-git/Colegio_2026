@@ -18,7 +18,7 @@
   .card h2{margin:0 0 10px 0; font-size:1rem;}
   label{font-size:0.8rem; font-weight:700; color:var(--slate); display:block; margin-bottom:4px;}
   input[type=email], input[type=password], select, textarea{
-    width:100%; padding:10px; border:1.5px solid var(--ink); border-radius:8px; font-size:0.95rem; margin-bottom:12px; font-family:inherit;
+    width:100%; padding:10px; border:1.5px solid var(--ink); border-radius:8px; font-size:16px; margin-bottom:12px; font-family:inherit;
   }
   .btn{background:var(--ink); color:#fff; border:none; padding:11px 18px; border-radius:8px; font-weight:700; font-size:0.9rem; cursor:pointer;}
   .btn.secondary{background:transparent; color:var(--ink); border:2px solid var(--ink);}
@@ -33,6 +33,9 @@
   .badge-si{background:#DCEEE9; color:var(--accent-dark);}
   .badge-no{background:#FCE4E4; color:var(--bad);}
   .badge-neutro{background:#eee; color:var(--slate);}
+  .badge-recupero{background:#FCEED3; color:#8A5A00;}
+  .nota-mala{color:var(--bad); font-weight:800;}
+  .aviso-pendiente{color:var(--bad); font-size:0.78rem; font-style:italic;}
   #hintLogin{color:var(--bad); font-size:0.85rem; margin-top:6px;}
   #hintMensaje{font-size:0.85rem; margin-top:6px;}
   #hintMensaje.ok{color:var(--accent);} #hintMensaje.err{color:var(--bad);}
@@ -103,8 +106,11 @@
 
     <div class="card">
       <h2>Heteroevaluación — Trimestre 2 (70%)</h2>
-      <table id="tablaNotas"></table>
-      <div style="text-align:right; font-weight:700; font-size:0.9rem;">Promedio: <span id="promHetero">—</span></div>
+      <table id="tablaNotas">
+        <thead><tr><th>Actividad</th><th style="text-align:right;">Nota</th><th style="text-align:right;">Aporta al 70%</th></tr></thead>
+        <tbody id="tablaNotasBody"></tbody>
+      </table>
+      <div style="text-align:right; font-weight:700; font-size:0.9rem; margin-top:6px;">Promedio: <span id="promHetero">—</span> · Acumulado del 70%: <span id="acumulado70">—</span></div>
     </div>
 
     <div class="card">
@@ -170,9 +176,9 @@
   const db = firebase.firestore();
 
   // Mismo webhook de Notificador.gs — el estudiante escribe, llega al correo del docente.
-  const WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec'; // pega aquí el mismo link /exec que usas en los talleres y el Panel
-  const WEBHOOK_AVISO_TOKEN = 'AmoAmiFamilia2026'; // la misma palabra clave
-
+    const WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec'; // <-- pega aquí el enlace /exec del Notificador.gs
+    const WEBHOOK_AVISO_TOKEN = 'AmoAmiFamilia2026'; // debe ser igual al de Notificador.gs
+  
   const NOTA_MINIMA = 3.4;
   let boletinActual = null;
 
@@ -215,6 +221,14 @@
     if(!user) return;
     const hint = document.getElementById('hintLogin');
     try{
+      const cfgSnap = await db.collection('config').doc('boletin-consulta').get();
+      const habilitado = cfgSnap.exists ? (cfgSnap.data().habilitado !== false) : true;
+      if(!habilitado){
+        hint.textContent = 'La consulta del boletín está temporalmente deshabilitada por tu docente. Intenta más tarde.';
+        document.getElementById('btnEntrar').disabled = false;
+        auth.signOut();
+        return;
+      }
       const snap = await db.collection('boletines').where('correo','==', user.email).limit(1).get();
       if(snap.empty){
         hint.textContent = 'No encontramos un boletín para este correo. Verifica con tu docente.';
@@ -255,25 +269,42 @@
 
     // Resumen por trimestre — el Trimestre 3 aparece solo si algún día existe el dato (crece solo, sin tocar código).
     const t1 = b.trimestre1;
-    document.getElementById('t1Txt').textContent = (t1 && typeof t1.nota==='number') ? t1.nota.toFixed(1) + (t1.corregido ? ' ✔' : '') : '—';
+    document.getElementById('t1Txt').innerHTML = (t1 && typeof t1.nota==='number')
+      ? `${t1.nota.toFixed(1)}` + (t1.corregido ? ' <span class="badge badge-recupero">RECUPERÓ</span>' : '')
+      : '—';
     document.getElementById('notaT1Explicacion').textContent = (t1 && t1.corregido)
-      ? 'La nota del Trimestre 1 quedó en 3.4 porque aprobaste tu plan de mejora de ese trimestre.' : '';
+      ? 'La nota del Trimestre 1 quedó en 3.4 porque presentaste y aprobaste tu plan de mejora de ese trimestre.' : '';
     document.getElementById('t2Txt').textContent = (typeof b.notaDefinitiva==='number') ? b.notaDefinitiva.toFixed(2) : '—';
     if(typeof b.notaTrimestre3 === 'number'){
       document.getElementById('filaT3').classList.remove('hidden');
       document.getElementById('t3Txt').textContent = b.notaTrimestre3.toFixed(2);
     }
 
-    const tabla = document.getElementById('tablaNotas');
-    tabla.innerHTML = '';
+    // Fecha límite para presentar actividades pendientes — actualiza esta fecha cada periodo.
+    const FECHA_LIMITE_TXT = '14 de agosto';
+
+    const tablaBody = document.getElementById('tablaNotasBody');
+    tablaBody.innerHTML = '';
     let suma=0, cuenta=0;
+    const totalActividades = (b.notas||[]).length;
     (b.notas||[]).forEach(n=>{
-      if(typeof n.nota === 'number'){ suma+=n.nota; cuenta++; }
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${n.actividad||''}</td><td style="text-align:right; font-weight:700;">${n.nota ?? '—'}</td>`;
-      tabla.appendChild(tr);
+      let celdaNota, celdaAporte;
+      if(typeof n.nota === 'number'){
+        suma+=n.nota; cuenta++;
+        const malaNota = n.nota < 3.4;
+        celdaNota = `<span class="${malaNota?'nota-mala':''}">${n.nota}</span>`;
+        const aporte = totalActividades ? (n.nota * 0.70 / totalActividades) : 0;
+        celdaAporte = aporte.toFixed(2);
+      }else{
+        celdaNota = `<span class="aviso-pendiente">Debe presentar la actividad antes del ${FECHA_LIMITE_TXT}</span>`;
+        celdaAporte = '—';
+      }
+      tr.innerHTML = `<td>${n.actividad||''}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
+      tablaBody.appendChild(tr);
     });
     document.getElementById('promHetero').textContent = cuenta ? (suma/cuenta).toFixed(2) : '—';
+    document.getElementById('acumulado70').textContent = cuenta ? ((suma/cuenta)*0.70).toFixed(2) : '—';
 
     document.getElementById('autoevalTxt').textContent = b.autoevaluacion ?? '—';
     document.getElementById('coevalTxt').textContent = b.coevaluacion ?? '—';
