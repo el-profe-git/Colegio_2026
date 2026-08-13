@@ -56,6 +56,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -78,6 +79,21 @@
   </div>
 
   <div class="hidden" id="panel">
+
+    <!-- ============ CATEGORÍA 0: BOLETÍN — CARGAR PLANILLA DE NOTAS ============ -->
+    <div class="card">
+      <h2>📤 Boletín — Cargar planilla de notas</h2>
+      <div style="font-size:0.78rem; color:var(--slate); margin-bottom:8px;">
+        Sube el Excel/ODS de notas (hojas 602, 603, 1001, 1002, 1003). Se lee aquí mismo en tu navegador —
+        el archivo nunca sale de tu computador ni pasa por ningún servidor externo, solo se suben los datos ya
+        organizados a Firestore. Puedes repetir esta carga cada vez que actualices la planilla.
+      </div>
+      <div class="fila">
+        <input type="file" id="inputPlanilla" accept=".xlsx,.xls,.ods">
+        <button class="btn" id="btnCargarPlanilla">📤 Leer y subir al boletín</button>
+      </div>
+      <div id="reportePlanilla" style="font-size:0.8rem; margin-top:8px; white-space:pre-wrap;"></div>
+    </div>
 
     <!-- ============ CATEGORÍA 1: CONFIGURACIÓN POR ACTIVIDAD ============ -->
     <div class="card">
@@ -208,8 +224,8 @@
   // Mismo webhook de Notificador.gs, pero usado al revés: aquí el docente escribe
   // y se envía al correo del estudiante. Pega aquí el mismo link /exec y la misma
   // palabra clave que ya configuraste en los talleres.
-  const WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec'; // ej: 'https://script.google.com/macros/s/XXXXX/exec'
-  const WEBHOOK_AVISO_TOKEN = 'AmoAmiFamilia2026'; // la misma palabra clave que pusiste en Notificador.gs
+  const WEBHOOK_AVISO_URL = ''; // ej: 'https://script.google.com/macros/s/XXXXX/exec'
+  const WEBHOOK_AVISO_TOKEN = ''; // la misma palabra clave que pusiste en Notificador.gs
 
   async function enviarMensajeEstudiante(intentoId){
     const item = todosLosIntentos.find(x=>x.id===intentoId);
@@ -240,6 +256,172 @@
   document.getElementById('versionTxt').textContent = 'código ' + VERSION_CODIGO;
 
   auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
+  /* ============================================================
+     CATEGORÍA 0 — leer la planilla de notas y subirla al boletín
+     (mismo lector probado por separado contra la planilla real)
+     ============================================================ */
+  function limpiarTxt_(txt){
+    return String(txt||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  }
+  function celdaXLSX_(ws, fila, col){
+    const addr = XLSX.utils.encode_cell({r:fila-1, c:col-1});
+    const cell = ws[addr];
+    return cell ? cell.v : null;
+  }
+  function normalizarNumero_(v){
+    if(v===null || v===undefined) return null;
+    if(typeof v === 'number') return v;
+    const n = parseFloat(String(v).trim().replace(',', '.'));
+    return isNaN(n) ? v : n;
+  }
+  function buscarColumnaConTexto_(ws, filas, maxCol, textoBuscado){
+    for(const fila of filas){
+      for(let c=1; c<=maxCol; c++){
+        if(limpiarTxt_(celdaXLSX_(ws, fila, c)).includes(textoBuscado)) return c;
+      }
+    }
+    return null;
+  }
+  function mapearBloque_(ws, filaEtiquetas, colInicio, colFin, etiquetas){
+    const mapa = {};
+    for(const [clave, texto] of Object.entries(etiquetas)){
+      for(let c=colInicio; c<=colFin; c++){
+        if(limpiarTxt_(celdaXLSX_(ws, filaEtiquetas, c)) === texto){ mapa[clave]=c; break; }
+      }
+    }
+    return mapa;
+  }
+
+  function parsearHojaPlanilla_(wb, nombreHoja){
+    const ws = wb.Sheets[nombreHoja];
+    if(!ws || !ws['!ref']) return { estudiantes: [], avisos: [] };
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    const maxCol = range.e.c+1, maxRow = range.e.r+1;
+    const avisos = [];
+
+    let filaTI=null, colTI=null;
+    for(let f=1; f<=6 && !filaTI; f++){
+      for(let c=1; c<=3; c++){
+        if(limpiarTxt_(celdaXLSX_(ws,f,c))==='TI'){ filaTI=f; colTI=c; break; }
+      }
+    }
+    if(!filaTI){ avisos.push(`Hoja ${nombreHoja}: no encontré la columna "TI", se omite esta hoja.`); return { estudiantes: [], avisos }; }
+    const colEmail = colTI+1, colNombre = colTI+2;
+    const filaDatosInicio = filaTI+1;
+
+    const colNota1 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'NOTA 1');
+    const colNota2 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'NOTA 2');
+    const colNota3 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'NOTA 3');
+    const colPlanT1 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'PLAN DE MEJORA TRIMESTRE 1');
+    const colPlanSub2 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'PLAN DE MEJORA SUBCOMISION');
+    const colEvalFinal = buscarColumnaConTexto_(ws, [1,2], maxCol, 'EVALUACION FINAL');
+
+    const bloques = [
+      ['nota1', colNota1], ['planT1', colPlanT1], ['nota2', colNota2],
+      ['nota3', colNota3], ['planSub2', colPlanSub2], ['evalFinal', colEvalFinal]
+    ].filter(b=>b[1]!==null).sort((a,b)=>a[1]-b[1]);
+    const finDe = {};
+    bloques.forEach((b,i)=>{ finDe[b[0]] = (i+1<bloques.length) ? bloques[i+1][1]-1 : maxCol; });
+
+    const FILA_CAMPOS = 3;
+    const mapaNota1 = colNota1 ? mapearBloque_(ws, FILA_CAMPOS, colNota1, finDe.nota1, {version:'VERSION',aciertos:'ACIERTOS',nota:'NOTA',tiempo:'TIEMPO',taller1:'TALLER 1',taller2:'TALLER 2',taller3:'TALLER 3'}) : {};
+    const mapaNota2 = colNota2 ? mapearBloque_(ws, FILA_CAMPOS, colNota2, finDe.nota2, {nota:'NOTA'}) : {};
+    const mapaNota3 = colNota3 ? mapearBloque_(ws, FILA_CAMPOS, colNota3, finDe.nota3, {nota:'NOTA',version:'VERSION',aciertos:'ACIERTOS'}) : {};
+    const mapaPlanT1 = colPlanT1 ? mapearBloque_(ws, FILA_CAMPOS, colPlanT1, finDe.planT1, {reportado:'REPORTADO',entrego:'ENTREGO',asistio:'ASISTIO',aprobo:'APROBO', notaTrimestre1:'TRIMESTRE 1'}) : {};
+    const mapaPlanSub2 = colPlanSub2 ? mapearBloque_(ws, FILA_CAMPOS, colPlanSub2, finDe.planSub2, {reportado:'REPORTADO',entrego:'ENTREGO',asistio:'ASISTIO',aprobo:'APROBO'}) : {};
+    const mapaEvalFinal = colEvalFinal ? mapearBloque_(ws, FILA_CAMPOS, colEvalFinal, finDe.evalFinal, {autoevaluacion:'AUTOEVALUACION',coevaluacion:'COEVALUACION',definitiva:'NOTA DEFINITIVA'}) : {};
+
+    function nombreDeBloque_(colInicio, colFin, prefijoRegex, generico){
+      if(!colInicio) return generico;
+      for(let c=colInicio; c<=colFin; c++){
+        const v = celdaXLSX_(ws,2,c);
+        if(v) return String(v).trim();
+      }
+      const titulo = celdaXLSX_(ws,1,colInicio);
+      const limpio = titulo ? String(titulo).replace(prefijoRegex,'').trim() : '';
+      return limpio || generico;
+    }
+    const nombreNota1 = nombreDeBloque_(colNota1, finDe.nota1, /^NOTA\s*1:?\s*/i, 'Nota 1');
+    const nombreNota2 = colNota2 ? nombreDeBloque_(colNota2, finDe.nota2, /^NOTA\s*2:?\s*/i, 'Nota 2') : null;
+    const nombreNota3 = nombreDeBloque_(colNota3, finDe.nota3, /^NOTA\s*3:?\s*/i, 'Nota 3');
+
+    const estudiantes = [];
+    for(let f=filaDatosInicio; f<=maxRow; f++){
+      const ti = celdaXLSX_(ws, f, colTI);
+      if(!ti) continue;
+      const leer = (mapa, campo) => mapa[campo] ? celdaXLSX_(ws, f, mapa[campo]) : null;
+      const leerNota = (mapa, campo) => normalizarNumero_(leer(mapa, campo));
+
+      const notas = [
+        { actividad: nombreNota1, nota: leerNota(mapaNota1,'nota'), version: leer(mapaNota1,'version'), aciertos: leer(mapaNota1,'aciertos'),
+          talleres: [leer(mapaNota1,'taller1'), leer(mapaNota1,'taller2'), leer(mapaNota1,'taller3')] },
+        ...(colNota2 ? [{ actividad: nombreNota2, nota: leerNota(mapaNota2,'nota') }] : []),
+        { actividad: nombreNota3, nota: leerNota(mapaNota3,'nota'), version: leer(mapaNota3,'version'), aciertos: leer(mapaNota3,'aciertos') },
+      ];
+      notas.forEach(n=>{
+        if(n.nota!==null && typeof n.nota !== 'number'){
+          avisos.push(`Hoja ${nombreHoja}, TI ${ti}: la nota de "${n.actividad}" no es un número (dice "${n.nota}") — revísala a mano en la planilla.`);
+        }
+      });
+
+      // Trimestre 1: si aprobó su plan de mejora, la nota queda en 3.4 (el mínimo aprobatorio),
+      // sin importar cuál haya sido la nota original más baja.
+      const aproboT1 = String(leer(mapaPlanT1,'aprobo')||'').trim().toUpperCase();
+      const t1Corregido = (aproboT1==='SI' || aproboT1==='SÍ');
+      let notaTrimestre1 = leerNota(mapaPlanT1,'notaTrimestre1');
+      if(t1Corregido) notaTrimestre1 = 3.4;
+
+      estudiantes.push({
+        ti: String(ti), correo: (celdaXLSX_(ws,f,colEmail)||'').toString().trim().toLowerCase(),
+        nombre: celdaXLSX_(ws,f,colNombre), curso: nombreHoja,
+        notas,
+        trimestre1: { nota: notaTrimestre1, corregido: t1Corregido },
+        planMejoraT1: { reportado: leer(mapaPlanT1,'reportado'), entrego: leer(mapaPlanT1,'entrego'), asistio: leer(mapaPlanT1,'asistio'), aprobo: leer(mapaPlanT1,'aprobo') },
+        planMejoraSub2: { reportado: leer(mapaPlanSub2,'reportado'), entrego: leer(mapaPlanSub2,'entrego'), asistio: leer(mapaPlanSub2,'asistio'), aprobo: leer(mapaPlanSub2,'aprobo') },
+        autoevaluacion: leerNota(mapaEvalFinal,'autoevaluacion'),
+        coevaluacion: leerNota(mapaEvalFinal,'coevaluacion'),
+        notaDefinitiva: leerNota(mapaEvalFinal,'definitiva'),
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    return { estudiantes, avisos };
+  }
+
+  document.getElementById('btnCargarPlanilla').addEventListener('click', async ()=>{
+    const input = document.getElementById('inputPlanilla');
+    const reporte = document.getElementById('reportePlanilla');
+    if(!input.files.length){ reporte.textContent = 'Elige un archivo primero.'; return; }
+    reporte.textContent = 'Leyendo archivo…';
+    try{
+      const buffer = await input.files[0].arrayBuffer();
+      const wb = XLSX.read(buffer, {type:'array'});
+      let totalEstudiantes = 0, totalAvisos = [];
+      const lineas = [];
+      for(const hoja of ['602','603','1001','1002','1003']){
+        const { estudiantes, avisos } = parsearHojaPlanilla_(wb, hoja);
+        totalAvisos.push(...avisos);
+        if(!estudiantes.length){ lineas.push(`${hoja}: 0 estudiantes (¿existe esa hoja en el archivo?)`); continue; }
+        let batch = db.batch();
+        let contador = 0;
+        for(const est of estudiantes){
+          batch.set(db.collection('boletines').doc(est.ti), est, {merge:true});
+          contador++;
+          if(contador % 400 === 0){ await batch.commit(); batch = db.batch(); }
+        }
+        await batch.commit();
+        totalEstudiantes += estudiantes.length;
+        lineas.push(`${hoja}: ${estudiantes.length} estudiantes subidos`);
+      }
+      let texto = `✅ Listo.\n` + lineas.join('\n');
+      if(totalAvisos.length){
+        texto += `\n\n⚠ ${totalAvisos.length} aviso(s) — revisar a mano en la planilla:\n` + totalAvisos.map(a=>'  · '+a).join('\n');
+      }
+      reporte.textContent = texto;
+    }catch(err){
+      reporte.textContent = 'Error al leer/subir la planilla: ' + err.message;
+    }
+  });
 
   function slugActividad_(nombre){
     return (nombre||'default').toLowerCase()
