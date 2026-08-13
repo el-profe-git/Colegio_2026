@@ -216,6 +216,11 @@
     appId: "1:403923437100:web:ec8aa9d84706bf99ba3389"
   };
   firebase.initializeApp(firebaseConfig);
+  // App secundaria: sirve SOLO para crear cuentas de estudiantes (correo+documento) sin
+  // cerrar tu propia sesión de docente. Firebase no permite crear cuentas de otras personas
+  // desde tu misma sesión, así que se usa una segunda "instancia" aparte, independiente.
+  const appSecundaria = firebase.initializeApp(firebaseConfig, 'secundaria');
+  const authSecundaria = appSecundaria.auth();
   const auth = firebase.auth();
   const db = firebase.firestore();
   const PUNTOS_MAXIMOS = 20;
@@ -388,6 +393,21 @@
     return { estudiantes, avisos };
   }
 
+  /** Crea la cuenta (correo+documento) de un estudiante si todavía no existe. Usa la app
+   *  secundaria para no cerrar tu propia sesión de docente. Nunca sobrescribe una cuenta
+   *  que ya exista (si ya existe, la deja tal cual — así no se pisa una clave ya usada). */
+  async function crearCuentaEstudiante_(correo, documento){
+    if(!correo || !documento) return 'sin-datos';
+    try{
+      await authSecundaria.createUserWithEmailAndPassword(correo, String(documento));
+      await authSecundaria.signOut();
+      return 'creada';
+    }catch(err){
+      if(err.code === 'auth/email-already-in-use') return 'ya-existia';
+      return 'error: ' + err.message;
+    }
+  }
+
   document.getElementById('btnCargarPlanilla').addEventListener('click', async ()=>{
     const input = document.getElementById('inputPlanilla');
     const reporte = document.getElementById('reportePlanilla');
@@ -397,6 +417,7 @@
       const buffer = await input.files[0].arrayBuffer();
       const wb = XLSX.read(buffer, {type:'array'});
       let totalEstudiantes = 0, totalAvisos = [];
+      let cuentasCreadas = 0, cuentasExistian = 0, cuentasError = [];
       const lineas = [];
       for(const hoja of ['602','603','1001','1002','1003']){
         const { estudiantes, avisos } = parsearHojaPlanilla_(wb, hoja);
@@ -412,8 +433,20 @@
         await batch.commit();
         totalEstudiantes += estudiantes.length;
         lineas.push(`${hoja}: ${estudiantes.length} estudiantes subidos`);
+
+        reporte.textContent = `Creando accesos de ${hoja}… (esto tarda un poco más)`;
+        for(const est of estudiantes){
+          const resultado = await crearCuentaEstudiante_(est.correo, est.ti);
+          if(resultado==='creada') cuentasCreadas++;
+          else if(resultado==='ya-existia') cuentasExistian++;
+          else if(resultado!=='sin-datos') cuentasError.push(`${hoja} TI ${est.ti} (${est.correo}): ${resultado}`);
+        }
       }
       let texto = `✅ Listo.\n` + lineas.join('\n');
+      texto += `\n\n🔑 Accesos: ${cuentasCreadas} cuentas nuevas creadas, ${cuentasExistian} ya existían (no se tocaron).`;
+      if(cuentasError.length){
+        texto += `\n⚠ ${cuentasError.length} error(es) creando cuenta:\n` + cuentasError.map(e=>'  · '+e).join('\n');
+      }
       if(totalAvisos.length){
         texto += `\n\n⚠ ${totalAvisos.length} aviso(s) — revisar a mano en la planilla:\n` + totalAvisos.map(a=>'  · '+a).join('\n');
       }
