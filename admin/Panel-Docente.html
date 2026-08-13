@@ -93,6 +93,12 @@
         <button class="btn" id="btnCargarPlanilla">📤 Leer y subir al boletín</button>
       </div>
       <div id="reportePlanilla" style="font-size:0.8rem; margin-top:8px; white-space:pre-wrap;"></div>
+      <hr style="border:none; border-top:1.5px dashed #ccc; margin:12px 0;">
+      <div style="font-size:0.82rem; margin-bottom:6px;">Consulta del boletín para estudiantes: <b id="estadoConsultaTxt">—</b></div>
+      <div class="fila">
+        <button class="btn" id="btnHabilitarConsulta">🔓 Habilitar consulta</button>
+        <button class="btn warn" id="btnDeshabilitarConsulta">🔒 Deshabilitar consulta</button>
+      </div>
     </div>
 
     <!-- ============ CATEGORÍA 1: CONFIGURACIÓN POR ACTIVIDAD ============ -->
@@ -435,11 +441,21 @@
         lineas.push(`${hoja}: ${estudiantes.length} estudiantes subidos`);
 
         reporte.textContent = `Creando accesos de ${hoja}… (esto tarda un poco más)`;
+        let bloqueadoPorActividad = false;
         for(const est of estudiantes){
+          if(bloqueadoPorActividad){
+            cuentasError.push(`${hoja} TI ${est.ti} (${est.correo}): no se intentó (Firebase sigue bloqueando por actividad inusual, espera unos minutos y vuelve a subir la planilla).`);
+            continue;
+          }
           const resultado = await crearCuentaEstudiante_(est.correo, est.ti);
           if(resultado==='creada') cuentasCreadas++;
           else if(resultado==='ya-existia') cuentasExistian++;
+          else if(resultado.includes('too-many-requests')){
+            bloqueadoPorActividad = true;
+            cuentasError.push(`${hoja} TI ${est.ti} (${est.correo}): Firebase bloqueó por actividad inusual — se detiene aquí, espera unos minutos y vuelve a subir la planilla.`);
+          }
           else if(resultado!=='sin-datos') cuentasError.push(`${hoja} TI ${est.ti} (${est.correo}): ${resultado}`);
+          await new Promise(r => setTimeout(r, 200)); // pausa breve entre cuenta y cuenta, para no verse como ráfaga sospechosa
         }
       }
       let texto = `✅ Listo.\n` + lineas.join('\n');
@@ -454,6 +470,24 @@
     }catch(err){
       reporte.textContent = 'Error al leer/subir la planilla: ' + err.message;
     }
+  });
+
+  async function cargarEstadoConsulta_(){
+    try{
+      const snap = await db.collection('config').doc('boletin-consulta').get();
+      const habilitado = snap.exists ? (snap.data().habilitado !== false) : true;
+      document.getElementById('estadoConsultaTxt').textContent = habilitado ? 'Habilitada ✅' : 'Deshabilitada 🔒';
+    }catch(err){
+      document.getElementById('estadoConsultaTxt').textContent = 'No se pudo leer';
+    }
+  }
+  document.getElementById('btnHabilitarConsulta').addEventListener('click', async ()=>{
+    await db.collection('config').doc('boletin-consulta').set({habilitado:true}, {merge:true});
+    cargarEstadoConsulta_();
+  });
+  document.getElementById('btnDeshabilitarConsulta').addEventListener('click', async ()=>{
+    await db.collection('config').doc('boletin-consulta').set({habilitado:false}, {merge:true});
+    cargarEstadoConsulta_();
   });
 
   function slugActividad_(nombre){
@@ -482,6 +516,7 @@
     document.getElementById('loginCard').classList.add('hidden');
     document.getElementById('panel').classList.remove('hidden');
     cargarIntentos();
+    cargarEstadoConsulta_();
   });
 
   document.getElementById('btnCerrarSesion').addEventListener('click', ()=>{
