@@ -29,7 +29,8 @@
   #hint{min-height:20px; font-size:0.82rem; font-weight:600; margin-top:6px;}
   #hint.err{color:var(--bad);} #hint.ok{color:var(--accent);}
   .canvas-wrap{background:var(--card); border:2px solid var(--ink); border-radius:8px; padding:6px; overflow-x:auto;}
-  canvas{display:block; touch-action:pan-y; cursor:crosshair; width:100%; height:auto; max-width:640px; min-width:480px; margin:0 auto;}
+  canvas{display:block; touch-action:pan-y; cursor:crosshair;}
+  #cv{width:100%; height:auto; max-width:640px; min-width:480px; margin:0 auto;}
   .toolbar{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
   .tool-btn{border:2px solid var(--ink); background:var(--card); padding:8px 12px; border-radius:6px; font-weight:700; font-size:0.82rem; cursor:pointer;}
   .tool-btn.active{background:var(--accent); color:#fff; border-color:var(--accent-dark);}
@@ -166,7 +167,7 @@
    Firebase — reemplaza a Code.gs / Apps Script por completo
    ============================================================ */
 const DOMINIO_INSTITUCIONAL = 'colcompartirsubaied.edu.co';
-const VERSION_CODIGO = 'fisica-mru · 2026-08-10b (scroll+zoom)';
+const VERSION_CODIGO = 'fisica-mru · 2026-08-13 (fix iconos pequeños)';
 
 // ============================================================
 // 🏷️ ETIQUETA DE ESTA ACTIVIDAD — cámbiala en cada nueva actividad/copia.
@@ -672,8 +673,8 @@ const UNIT = 34;
     });
   });
   document.getElementById('btnDeshacer').addEventListener('click', ()=>{ activo && activo.undo && activo.undo(); });
-  const WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec'; // <-- pega aquí el enlace /exec del Notificador.gs
-  const WEBHOOK_AVISO_TOKEN = 'AmoAmiFamilia2026'; // debe ser igual al de Notificador.gs
+  const WEBHOOK_AVISO_URL = ''; // <-- pega aquí el enlace /exec del Notificador.gs
+  const WEBHOOK_AVISO_TOKEN = 'cambia-esta-palabra-clave'; // debe ser igual al de Notificador.gs
 
   document.getElementById('btnAvisar').addEventListener('click', async ()=>{
     const btn = document.getElementById('btnAvisar');
