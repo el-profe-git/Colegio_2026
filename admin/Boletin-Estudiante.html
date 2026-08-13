@@ -44,6 +44,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://el-profe-git.github.io/Colegio_2026/config-compartida.js"></script>
 </head>
 <body>
 
@@ -176,9 +177,9 @@
   const db = firebase.firestore();
 
   // Mismo webhook de Notificador.gs — el estudiante escribe, llega al correo del docente.
-    const WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec'; // <-- pega aquí el enlace /exec del Notificador.gs
-    const WEBHOOK_AVISO_TOKEN = 'AmoAmiFamilia2026'; // debe ser igual al de Notificador.gs
-  
+  const WEBHOOK_AVISO_URL = window.WEBHOOK_AVISO_URL || '';
+  const WEBHOOK_AVISO_TOKEN = window.WEBHOOK_AVISO_TOKEN || '';
+
   const NOTA_MINIMA = 3.4;
   let boletinActual = null;
 
