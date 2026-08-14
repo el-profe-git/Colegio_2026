@@ -127,6 +127,11 @@
       <div class="nota-grande" id="notaDefinitivaTxt">—</div>
     </div>
 
+    <div class="card hidden" id="cardObservacion">
+      <h2>📝 Observación del docente</h2>
+      <div id="observacionTxt" style="font-size:0.9rem; line-height:1.5;"></div>
+    </div>
+
     <div class="card">
       <h2>Proceso formativo (talleres)</h2>
       <div id="talleresTxt"></div>
@@ -181,6 +186,23 @@
   const WEBHOOK_AVISO_TOKEN = window.WEBHOOK_AVISO_TOKEN || '';
 
   const NOTA_MINIMA = 3.4;
+
+  // Glosario de observaciones: mismo texto que la hoja "OBSERVACIONES" de la planilla.
+  // El docente solo escribe el número (1-4) en la planilla; aquí se traduce al texto completo.
+  const GLOSARIO_OBSERVACIONES = {
+    'Matemáticas': {
+      '1': 'El estudiante evidencia un desempeño sobresaliente en el pensamiento numérico, demostrando dominio en la resolución de operaciones con números enteros y en la aplicación de propiedades geométricas para la construcción de triángulos, articulando con claridad los procesos de razonamiento matemático propuestos en las evaluaciones del periodo. Se felicita su compromiso con el desarrollo del pensamiento espacial y numérico.',
+      '2': 'El estudiante avanza adecuadamente en la apropiación conceptual de las operaciones con enteros y en la construcción de figuras geométricas; se recomienda continuar fortaleciendo la precisión en los procedimientos de cálculo y en el uso de instrumentos de construcción geométrica (regla, compás y transportador), con el fin de consolidar el pensamiento espacial y numérico propio del grado.',
+      '3': 'Se invita al estudiante a mantener y fortalecer hábitos de estudio constantes, como la revisión periódica de los talleres formativos y la práctica guiada de ejercicios de operaciones con enteros y construcciones geométricas, estrategias que contribuyen a consolidar su desempeño procedimental y a prepararlo favorablemente para las evaluaciones del pensamiento matemático.',
+      '4': 'Se recomienda al estudiante aprovechar de manera más consistente los espacios de clase y las actividades formativas propuestas, así como participar activamente en las estrategias de acompañamiento y mejora ofrecidas por el docente, con el fin de fortalecer su proceso de aprendizaje en el pensamiento numérico y espacial.'
+    },
+    'Física': {
+      '1': 'El estudiante demuestra un desempeño destacado en el pensamiento científico, específicamente en la comprensión y aplicación de los conceptos de cinemática (movimiento rectilíneo uniforme), evidenciando claridad en el análisis de gráficas y ecuaciones de movimiento propuestas en las evaluaciones del periodo. Se felicita su avance en la competencia de explicación de fenómenos del entorno físico.',
+      '2': 'El estudiante presenta un avance adecuado en la resolución de situaciones relacionadas con el movimiento rectilíneo uniforme; se recomienda continuar fortaleciendo la precisión en el manejo de ecuaciones cinemáticas y en la interpretación de gráficas de posición, velocidad y tiempo, para consolidar su competencia de explicación de fenómenos físicos.',
+      '3': 'Se invita al estudiante a mantener hábitos de estudio constantes, dedicando tiempo a la práctica de ejercicios de cinemática y a la resolución guiada de talleres formativos, lo cual fortalecerá su comprensión conceptual y procedimental del movimiento rectilíneo uniforme de cara a las evaluaciones del área.',
+      '4': 'Se recomienda al estudiante aprovechar de manera más consistente los espacios de clase destinados al desarrollo de talleres formativos, así como participar de forma activa en las estrategias de acompañamiento y refuerzo propuestas por el docente, con el fin de fortalecer su desempeño en el pensamiento científico y su preparación para las evaluaciones de cinemática.'
+    }
+  };
   let boletinActual = null;
 
   document.getElementById('btnEntrar').addEventListener('click', async ()=>{
@@ -310,6 +332,17 @@
     document.getElementById('autoevalTxt').textContent = b.autoevaluacion ?? '—';
     document.getElementById('coevalTxt').textContent = b.coevaluacion ?? '—';
     document.getElementById('notaDefinitivaTxt').textContent = (typeof b.notaDefinitiva==='number') ? b.notaDefinitiva.toFixed(2) : '—';
+
+    // Observación del docente: solo se muestra si hay un número asignado en la planilla.
+    const cardObs = document.getElementById('cardObservacion');
+    const numeroObs = b.observacionNumero ? String(b.observacionNumero).trim() : '';
+    const glosarioMateria = GLOSARIO_OBSERVACIONES[b.materia] || {};
+    if(numeroObs && glosarioMateria[numeroObs]){
+      cardObs.classList.remove('hidden');
+      document.getElementById('observacionTxt').textContent = glosarioMateria[numeroObs];
+    }else{
+      cardObs.classList.add('hidden');
+    }
 
     // alerta de plan de mejora si la definitiva esta por debajo del minimo
     const alerta = document.getElementById('alertaMejora');

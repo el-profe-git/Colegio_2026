@@ -358,7 +358,7 @@
     const mapaNota3 = colNota3 ? mapearBloque_(ws, FILA_CAMPOS, colNota3, finDe.nota3, {nota:'NOTA',version:'VERSION',aciertos:'ACIERTOS'}) : {};
     const mapaPlanT1 = colPlanT1 ? mapearBloque_(ws, FILA_CAMPOS, colPlanT1, finDe.planT1, {reportado:'REPORTADO',entrego:'ENTREGO',asistio:'ASISTIO',aprobo:'APROBO', notaTrimestre1:'TRIMESTRE 1'}) : {};
     const mapaPlanSub2 = colPlanSub2 ? mapearBloque_(ws, FILA_CAMPOS, colPlanSub2, finDe.planSub2, {reportado:'REPORTADO',entrego:'ENTREGO',asistio:'ASISTIO',aprobo:'APROBO'}) : {};
-    const mapaEvalFinal = colEvalFinal ? mapearBloque_(ws, FILA_CAMPOS, colEvalFinal, finDe.evalFinal, {autoevaluacion:'AUTOEVALUACION',coevaluacion:'COEVALUACION',definitiva:'NOTA DEFINITIVA'}) : {};
+    const mapaEvalFinal = colEvalFinal ? mapearBloque_(ws, FILA_CAMPOS, colEvalFinal, finDe.evalFinal, {autoevaluacion:'AUTOEVALUACION',coevaluacion:'COEVALUACION',definitiva:'NOTA DEFINITIVA',observacion:'OBSERVACION'}) : {};
 
     function nombreDeBloque_(colInicio, colFin, prefijoRegex, generico){
       if(!colInicio) return generico;
@@ -403,6 +403,7 @@
       estudiantes.push({
         ti: String(ti), correo: (celdaXLSX_(ws,f,colEmail)||'').toString().trim().toLowerCase(),
         nombre: celdaXLSX_(ws,f,colNombre), curso: nombreHoja,
+        materia: (nombreHoja==='602'||nombreHoja==='603') ? 'Matemáticas' : 'Física',
         notas,
         trimestre1: { nota: notaTrimestre1, corregido: t1Corregido },
         planMejoraT1: { reportado: leer(mapaPlanT1,'reportado'), entrego: leer(mapaPlanT1,'entrego'), asistio: leer(mapaPlanT1,'asistio'), aprobo: leer(mapaPlanT1,'aprobo') },
@@ -410,6 +411,7 @@
         autoevaluacion: leerNota(mapaEvalFinal,'autoevaluacion'),
         coevaluacion: leerNota(mapaEvalFinal,'coevaluacion'),
         notaDefinitiva: leerNota(mapaEvalFinal,'definitiva'),
+        observacionNumero: leer(mapaEvalFinal,'observacion'),
         actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
