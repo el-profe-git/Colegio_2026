@@ -120,6 +120,7 @@
         <tr><td>Autoevaluación (20%)</td><td id="autoevalTxt" style="text-align:right;">—</td></tr>
         <tr><td>Coevaluación (10%)</td><td id="coevalTxt" style="text-align:right;">—</td></tr>
       </table>
+      <div id="linkAutoevaluacion" class="hidden" style="margin-top:8px; font-size:0.85rem;"></div>
     </div>
 
     <div class="card">
@@ -320,7 +321,9 @@
         const aporte = totalActividades ? (n.nota * 0.70 / totalActividades) : 0;
         celdaAporte = aporte.toFixed(2);
       }else{
-        celdaNota = `<span class="aviso-pendiente">Debe presentar la actividad antes del ${FECHA_LIMITE_TXT}</span>`;
+        const link = (window.LINKS_ACTIVIDADES||{})[n.actividad];
+        celdaNota = `<span class="aviso-pendiente">Debe presentar la actividad antes del ${FECHA_LIMITE_TXT}</span>`
+          + (link ? `<br><a href="${link}" target="_blank" style="font-size:0.78rem;">➡ Ir a presentarla</a>` : '');
         celdaAporte = '—';
       }
       tr.innerHTML = `<td>${n.actividad||''}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
@@ -331,6 +334,16 @@
 
     document.getElementById('autoevalTxt').textContent = b.autoevaluacion ?? '—';
     document.getElementById('coevalTxt').textContent = b.coevaluacion ?? '—';
+    const linkAuto = (window.LINKS_ACTIVIDADES||{})['_AUTOEVALUACION'];
+    const cajaLinkAuto = document.getElementById('linkAutoevaluacion');
+    if(cajaLinkAuto){
+      if((b.autoevaluacion===undefined || b.autoevaluacion===null) && linkAuto){
+        cajaLinkAuto.innerHTML = `<a href="${linkAuto}" target="_blank">➡ Ir a responder tu autoevaluación y coevaluación</a>`;
+        cajaLinkAuto.classList.remove('hidden');
+      }else{
+        cajaLinkAuto.classList.add('hidden');
+      }
+    }
     document.getElementById('notaDefinitivaTxt').textContent = (typeof b.notaDefinitiva==='number') ? b.notaDefinitiva.toFixed(2) : '—';
 
     // Observación del docente: solo se muestra si hay un número asignado en la planilla.

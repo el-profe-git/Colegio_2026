@@ -325,7 +325,7 @@
     const ws = wb.Sheets[nombreHoja];
     if(!ws || !ws['!ref']) return { estudiantes: [], avisos: [] };
     const range = XLSX.utils.decode_range(ws['!ref']);
-    const maxCol = range.e.c+1, maxRow = range.e.r+1;
+    const maxRow = range.e.r+1;
     const avisos = [];
 
     let filaTI=null, colTI=null;
@@ -338,84 +338,83 @@
     const colEmail = colTI+1, colNombre = colTI+2;
     const filaDatosInicio = filaTI+1;
 
-    const colNota1 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'NOTA 1');
-    const colNota2 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'NOTA 2');
-    const colNota3 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'NOTA 3');
-    const colPlanT1 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'PLAN DE MEJORA TRIMESTRE 1');
-    const colPlanSub2 = buscarColumnaConTexto_(ws, [1,2], maxCol, 'PLAN DE MEJORA SUBCOMISION');
-    const colEvalFinal = buscarColumnaConTexto_(ws, [1,2], maxCol, 'EVALUACION FINAL');
-
-    const bloques = [
-      ['nota1', colNota1], ['planT1', colPlanT1], ['nota2', colNota2],
-      ['nota3', colNota3], ['planSub2', colPlanSub2], ['evalFinal', colEvalFinal]
-    ].filter(b=>b[1]!==null).sort((a,b)=>a[1]-b[1]);
-    const finDe = {};
-    bloques.forEach((b,i)=>{ finDe[b[0]] = (i+1<bloques.length) ? bloques[i+1][1]-1 : maxCol; });
-
-    const FILA_CAMPOS = 3;
-    const mapaNota1 = colNota1 ? mapearBloque_(ws, FILA_CAMPOS, colNota1, finDe.nota1, {version:'VERSION',aciertos:'ACIERTOS',nota:'NOTA',tiempo:'TIEMPO',taller1:'TALLER 1',taller2:'TALLER 2',taller3:'TALLER 3'}) : {};
-    const mapaNota2 = colNota2 ? mapearBloque_(ws, FILA_CAMPOS, colNota2, finDe.nota2, {nota:'NOTA'}) : {};
-    const mapaNota3 = colNota3 ? mapearBloque_(ws, FILA_CAMPOS, colNota3, finDe.nota3, {nota:'NOTA',version:'VERSION',aciertos:'ACIERTOS'}) : {};
-    const mapaPlanT1 = colPlanT1 ? mapearBloque_(ws, FILA_CAMPOS, colPlanT1, finDe.planT1, {reportado:'REPORTADO',entrego:'ENTREGO',asistio:'ASISTIO',aprobo:'APROBO', notaTrimestre1:'TRIMESTRE 1'}) : {};
-    const mapaPlanSub2 = colPlanSub2 ? mapearBloque_(ws, FILA_CAMPOS, colPlanSub2, finDe.planSub2, {reportado:'REPORTADO',entrego:'ENTREGO',asistio:'ASISTIO',aprobo:'APROBO'}) : {};
-    const mapaEvalFinal = colEvalFinal ? mapearBloque_(ws, FILA_CAMPOS, colEvalFinal, finDe.evalFinal, {autoevaluacion:'AUTOEVALUACION',coevaluacion:'COEVALUACION',definitiva:'NOTA DEFINITIVA',observacion:'OBSERVACION'}) : {};
-
-    function nombreDeBloque_(colInicio, colFin, prefijoRegex, generico){
-      if(!colInicio) return generico;
-      for(let c=colInicio; c<=colFin; c++){
-        const v = celdaXLSX_(ws,2,c);
-        if(v) return String(v).trim();
-      }
-      const titulo = celdaXLSX_(ws,1,colInicio);
+    // Estructura fija confirmada, igual en las 5 hojas (602, 603, 1001, 1002, 1003):
+    // Nota1=F, Nota2=M, Nota3=T, Nota4=AA · Plan T1=AF-AK · Plan Subcomisión II=AM-AP ·
+    // Evaluación final=AU-AW · Observaciones=AX-BA · Asistencia=BB-BD
+    const COL = s => column_index_from_string_(s);
+    function tituloBloque_(colTituloLetra, colNotaLetra, prefijoRegex, generico){
+      const colTitulo = COL(colTituloLetra);
+      const titulo = celdaXLSX_(ws,1,colTitulo);
       const limpio = titulo ? String(titulo).replace(prefijoRegex,'').trim() : '';
-      return limpio || generico;
+      return limpio || null; // null = este bloque no tiene tema asignado, no cuenta como actividad real
     }
-    const nombreNota1 = nombreDeBloque_(colNota1, finDe.nota1, /^NOTA\s*1:?\s*/i, 'Nota 1');
-    const nombreNota2 = colNota2 ? nombreDeBloque_(colNota2, finDe.nota2, /^NOTA\s*2:?\s*/i, 'Nota 2') : null;
-    const nombreNota3 = nombreDeBloque_(colNota3, finDe.nota3, /^NOTA\s*3:?\s*/i, 'Nota 3');
+    const nombreNota1 = tituloBloque_('D','F', /^NOTA\s*1:?\s*/i, null);
+    const nombreNota2 = tituloBloque_('K','M', /^NOTA\s*2:?\s*/i, null);
+    const nombreNota3 = tituloBloque_('R','T', /^NOTA\s*3:?\s*/i, null);
+    const nombreNota4 = tituloBloque_('Y','AA', /^NOTA\s*4:?\s*/i, null);
 
     const estudiantes = [];
     for(let f=filaDatosInicio; f<=maxRow; f++){
       const ti = celdaXLSX_(ws, f, colTI);
       if(!ti) continue;
-      const leer = (mapa, campo) => mapa[campo] ? celdaXLSX_(ws, f, mapa[campo]) : null;
-      const leerNota = (mapa, campo) => normalizarNumero_(leer(mapa, campo));
+      const leerCol = (letra) => celdaXLSX_(ws, f, COL(letra));
+      const leerNotaCol = (letra) => normalizarNumero_(leerCol(letra));
 
-      const notas = [
-        { actividad: nombreNota1, nota: leerNota(mapaNota1,'nota'), version: leer(mapaNota1,'version'), aciertos: leer(mapaNota1,'aciertos'),
-          talleres: [leer(mapaNota1,'taller1'), leer(mapaNota1,'taller2'), leer(mapaNota1,'taller3')] },
-        ...(colNota2 ? [{ actividad: nombreNota2, nota: leerNota(mapaNota2,'nota') }] : []),
-        { actividad: nombreNota3, nota: leerNota(mapaNota3,'nota'), version: leer(mapaNota3,'version'), aciertos: leer(mapaNota3,'aciertos') },
-      ];
-      notas.forEach(n=>{
-        if(n.nota!==null && typeof n.nota !== 'number'){
+      const notasCrudas = [
+        nombreNota1 ? {actividad:nombreNota1, nota:leerNotaCol('F')} : null,
+        nombreNota2 ? {actividad:nombreNota2, nota:leerNotaCol('M')} : null,
+        nombreNota3 ? {actividad:nombreNota3, nota:leerNotaCol('T')} : null,
+        nombreNota4 ? {actividad:nombreNota4, nota:leerNotaCol('AA')} : null,
+      ].filter(n=>n!==null);
+      notasCrudas.forEach(n=>{
+        if(n.nota!==null && n.nota!==undefined && typeof n.nota !== 'number'){
           avisos.push(`Hoja ${nombreHoja}, TI ${ti}: la nota de "${n.actividad}" no es un número (dice "${n.nota}") — revísala a mano en la planilla.`);
         }
       });
 
-      // Trimestre 1: si aprobó su plan de mejora, la nota queda en 3.4 (el mínimo aprobatorio),
-      // sin importar cuál haya sido la nota original más baja.
-      const aproboT1 = String(leer(mapaPlanT1,'aprobo')||'').trim().toUpperCase();
+      // Trimestre 1: si aprobó su plan de mejora, la nota de Nota1 queda en 3.4 (el mínimo
+      // aprobatorio), sin importar cuál haya sido la nota original más baja.
+      const aproboT1 = String(leerCol('AI')||'').trim().toUpperCase(); // AI = APROBO (plan T1)
       const t1Corregido = (aproboT1==='SI' || aproboT1==='SÍ');
-      let notaTrimestre1 = leerNota(mapaPlanT1,'notaTrimestre1');
+      let notaTrimestre1 = leerNotaCol('AK'); // AK = NOTA TRIMESTRE 1
       if(t1Corregido) notaTrimestre1 = 3.4;
 
-      estudiantes.push({
+      // Autoevaluación/Coevaluación: el estudiante las escribe SOLO desde el taller de
+      // autoevaluación (nunca desde esta planilla) — si la celda está vacía, NO se incluye
+      // en lo que se sube, para no borrar por accidente lo que el estudiante ya respondió.
+      const autoevalExcel = leerNotaCol('AU');
+      const coevalExcel = leerNotaCol('AV');
+
+      const datosEstudiante = {
         ti: String(ti), correo: (celdaXLSX_(ws,f,colEmail)||'').toString().trim().toLowerCase(),
         nombre: celdaXLSX_(ws,f,colNombre), curso: nombreHoja,
         materia: (nombreHoja==='602'||nombreHoja==='603') ? 'Matemáticas' : 'Física',
-        notas,
+        notas: notasCrudas,
         trimestre1: { nota: notaTrimestre1, corregido: t1Corregido },
-        planMejoraT1: { reportado: leer(mapaPlanT1,'reportado'), entrego: leer(mapaPlanT1,'entrego'), asistio: leer(mapaPlanT1,'asistio'), aprobo: leer(mapaPlanT1,'aprobo') },
-        planMejoraSub2: { reportado: leer(mapaPlanSub2,'reportado'), entrego: leer(mapaPlanSub2,'entrego'), asistio: leer(mapaPlanSub2,'asistio'), aprobo: leer(mapaPlanSub2,'aprobo') },
-        autoevaluacion: leerNota(mapaEvalFinal,'autoevaluacion'),
-        coevaluacion: leerNota(mapaEvalFinal,'coevaluacion'),
-        notaDefinitiva: leerNota(mapaEvalFinal,'definitiva'),
-        observacionNumero: leer(mapaEvalFinal,'observacion'),
+        planMejoraT1: { reportado: leerCol('AF'), entrego: leerCol('AG'), presento: leerCol('AH'), aprobo: leerCol('AI') },
+        planMejoraSub2: { reportado: leerCol('AM'), entrego: leerCol('AN'), presento: leerCol('AO'), aprobo: leerCol('AP') },
+        notaDefinitiva: leerNotaCol('AW'),
+        observacionCognitiva: leerCol('AX'),
+        observacionProcedimental: leerCol('AY'),
+        observacionActitudinal: leerCol('AZ'),
+        observacionGeneral: leerCol('BA'),
+        clasesProgramadas: leerNotaCol('BB'),
+        clasesAsistidas: leerNotaCol('BC'),
+        clasesExcusadas: leerNotaCol('BD'),
         actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      };
+      if(typeof autoevalExcel === 'number') datosEstudiante.autoevaluacion = autoevalExcel;
+      if(typeof coevalExcel === 'number') datosEstudiante.coevaluacion = coevalExcel;
+
+      estudiantes.push(datosEstudiante);
     }
     return { estudiantes, avisos };
+  }
+
+  function column_index_from_string_(letra){
+    let n = 0;
+    for(let i=0;i<letra.length;i++){ n = n*26 + (letra.charCodeAt(i)-64); }
+    return n;
   }
 
   /** Crea la cuenta (correo+documento) de un estudiante si todavía no existe. Usa la app
@@ -761,7 +760,13 @@
 
     const tbody = document.getElementById('tablaBody');
     tbody.innerHTML = '';
-    filtrados.sort((a,b)=> (a.apellidos||'').localeCompare(b.apellidos||''));
+    filtrados.sort((a,b)=>{
+      const act = (a.actividad||'').localeCompare(b.actividad||'');
+      if(act !== 0) return act;
+      const curso = String(a.curso||'').localeCompare(String(b.curso||''));
+      if(curso !== 0) return curso;
+      return (a.apellidos||'').localeCompare(b.apellidos||'');
+    });
     filtrados.forEach(x=>{
       const tr = document.createElement('tr');
       const anulado = x.estado==='ANULADO_POR_DOCENTE';
@@ -940,7 +945,13 @@
   }
 
   document.getElementById('btnExportar').addEventListener('click', ()=>{
-    const filtrados = obtenerFiltrados();
+    const filtrados = obtenerFiltrados().slice().sort((a,b)=>{
+      const act = (a.actividad||'').localeCompare(b.actividad||'');
+      if(act !== 0) return act;
+      const curso = String(a.curso||'').localeCompare(String(b.curso||''));
+      if(curso !== 0) return curso;
+      return (a.apellidos||'').localeCompare(b.apellidos||'');
+    });
     const encabezados = ['Materia','Grado','Trimestre','Actividad','Apellidos','Nombres','Documento','Curso','Version','Estado',
       'Aciertos','Nota','Aprobado','TiempoUsado','FueraDeTiempo','Inicio','Fin','DetalleRespuestas'];
     const filas = filtrados.map(x => {
