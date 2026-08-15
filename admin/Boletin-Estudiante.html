@@ -14,6 +14,21 @@
   header{padding:14px 18px; border-bottom:2px solid var(--ink); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
   header img{height:40px;}
   main{max-width:720px; margin:0 auto; padding:16px;}
+  @media (min-width:900px){
+    main{max-width:860px; padding:24px;}
+    .card{padding:22px;}
+    body{font-size:17px;}
+  }
+  @media (min-width:1300px){
+    main{max-width:980px;}
+  }
+  .tabla-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  @media (max-width:480px){
+    main{padding:10px;}
+    .card{padding:12px;}
+    table{font-size:0.82rem;}
+    .nota-grande{font-size:2.4rem;}
+  }
   .card{background:var(--card); border:2px solid var(--ink); border-radius:10px; padding:16px; margin-bottom:16px;}
   .card h2{margin:0 0 10px 0; font-size:1rem;}
   label{font-size:0.8rem; font-weight:700; color:var(--slate); display:block; margin-bottom:4px;}
@@ -107,10 +122,12 @@
 
     <div class="card">
       <h2>Heteroevaluación — Trimestre 2 (70%)</h2>
+      <div class="tabla-scroll">
       <table id="tablaNotas">
-        <thead><tr><th>Actividad</th><th style="text-align:right;">Nota</th><th style="text-align:right;">Aporta al 70%</th></tr></thead>
+        <thead><tr><th>Actividad</th><th style="text-align:right;">Aciertos</th><th style="text-align:right;">Tiempo</th><th style="text-align:right;">Nota</th><th style="text-align:right;">Aporta al 70%</th></tr></thead>
         <tbody id="tablaNotasBody"></tbody>
       </table>
+      </div>
       <div style="text-align:right; font-weight:700; font-size:0.9rem; margin-top:6px;">Promedio: <span id="promHetero">—</span> · Acumulado del 70%: <span id="acumulado70">—</span></div>
     </div>
 
@@ -126,11 +143,23 @@
     <div class="card">
       <h2 style="text-align:center;">Nota Definitiva</h2>
       <div class="nota-grande" id="notaDefinitivaTxt">—</div>
+      <div id="avisoDefinitivaPendiente" class="hidden" style="background:#FCE4E4; border:1.5px solid var(--bad); border-radius:8px; padding:10px; margin-top:10px; font-size:0.85rem; color:var(--bad); text-align:center;">
+        ⚠ Tu nota definitiva está <b>pendiente</b> porque te faltan notas por completar. Tienes plazo hasta el <b>18 de agosto</b> para completarlas.
+      </div>
     </div>
 
     <div class="card hidden" id="cardObservacion">
-      <h2>📝 Observación del docente</h2>
-      <div id="observacionTxt" style="font-size:0.9rem; line-height:1.5;"></div>
+      <h2>📝 Observaciones del docente</h2>
+      <div id="observacionesBox" style="font-size:0.9rem; line-height:1.5;"></div>
+    </div>
+
+    <div class="card">
+      <h2>📅 Asistencia — Trimestre 2</h2>
+      <table>
+        <tr><td>Clases programadas</td><td id="clasesProgTxt" style="text-align:right;">—</td></tr>
+        <tr><td>Clases asistidas</td><td id="clasesAsisTxt" style="text-align:right;">—</td></tr>
+        <tr><td>Ausencias excusadas</td><td id="clasesExcTxt" style="text-align:right;">—</td></tr>
+      </table>
     </div>
 
     <div class="card">
@@ -305,7 +334,7 @@
     }
 
     // Fecha límite para presentar actividades pendientes — actualiza esta fecha cada periodo.
-    const FECHA_LIMITE_TXT = '14 de agosto';
+    const FECHA_LIMITE_TXT = '18 de agosto';
 
     const tablaBody = document.getElementById('tablaNotasBody');
     tablaBody.innerHTML = '';
@@ -314,6 +343,8 @@
     (b.notas||[]).forEach(n=>{
       const tr = document.createElement('tr');
       let celdaNota, celdaAporte;
+      const celdaAciertos = (n.aciertos!==undefined && n.aciertos!==null) ? n.aciertos : '—';
+      const celdaTiempo = (n.tiempo!==undefined && n.tiempo!==null) ? n.tiempo+' min' : '—';
       if(typeof n.nota === 'number'){
         suma+=n.nota; cuenta++;
         const malaNota = n.nota < 3.4;
@@ -326,7 +357,7 @@
           + (link ? `<br><a href="${link}" target="_blank" style="font-size:0.78rem;">➡ Ir a presentarla</a>` : '');
         celdaAporte = '—';
       }
-      tr.innerHTML = `<td>${n.actividad||''}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
+      tr.innerHTML = `<td>${n.actividad||''}</td><td style="text-align:right;">${celdaAciertos}</td><td style="text-align:right;">${celdaTiempo}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
       tablaBody.appendChild(tr);
     });
     document.getElementById('promHetero').textContent = cuenta ? (suma/cuenta).toFixed(2) : '—';
@@ -345,17 +376,30 @@
       }
     }
     document.getElementById('notaDefinitivaTxt').textContent = (typeof b.notaDefinitiva==='number') ? b.notaDefinitiva.toFixed(2) : '—';
+    document.getElementById('avisoDefinitivaPendiente').classList.toggle('hidden', typeof b.notaDefinitiva==='number');
 
     // Observación del docente: solo se muestra si hay un número asignado en la planilla.
     const cardObs = document.getElementById('cardObservacion');
-    const numeroObs = b.observacionNumero ? String(b.observacionNumero).trim() : '';
     const glosarioMateria = GLOSARIO_OBSERVACIONES[b.materia] || {};
-    if(numeroObs && glosarioMateria[numeroObs]){
+    const categorias = [
+      ['Cognitiva', b.observacionCognitiva],
+      ['Procedimental', b.observacionProcedimental],
+      ['Actitudinal', b.observacionActitudinal],
+      ['General', b.observacionGeneral],
+    ];
+    const partesObs = categorias
+      .filter(([_,num]) => num!==undefined && num!==null && String(num).trim()!=='' && glosarioMateria[String(num).trim()])
+      .map(([etiqueta,num]) => `<p><b>${etiqueta}:</b> ${glosarioMateria[String(num).trim()]}</p>`);
+    if(partesObs.length){
       cardObs.classList.remove('hidden');
-      document.getElementById('observacionTxt').textContent = glosarioMateria[numeroObs];
+      document.getElementById('observacionesBox').innerHTML = partesObs.join('');
     }else{
       cardObs.classList.add('hidden');
     }
+
+    document.getElementById('clasesProgTxt').textContent = (typeof b.clasesProgramadas==='number') ? b.clasesProgramadas : '—';
+    document.getElementById('clasesAsisTxt').textContent = (typeof b.clasesAsistidas==='number') ? b.clasesAsistidas : '—';
+    document.getElementById('clasesExcTxt').textContent = (typeof b.clasesExcusadas==='number') ? b.clasesExcusadas : '—';
 
     // alerta de plan de mejora si la definitiva esta por debajo del minimo
     const alerta = document.getElementById('alertaMejora');
