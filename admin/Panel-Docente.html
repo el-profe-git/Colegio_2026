@@ -363,18 +363,39 @@
     const nombreNota3 = tituloBloque_('R','T', /^NOTA\s*3:?\s*/i, null);
     const nombreNota4 = tituloBloque_('Y','AA', /^NOTA\s*4:?\s*/i, null);
 
+    // Cada bloque de nota trae 3 columnas de "proceso" después de tiempo (ej. Nota1 = Taller
+    // 1/2/3; Nota2 = Actividad en clase, Trabajo en clase; Nota3 = Apuntes de clase, etc.) —
+    // se leen genéricamente por su propio título de columna (fila 3), sin asumir nombres fijos.
+    function leerProceso_(colInicioProceso){
+      const etiquetas = [];
+      for(let i=0;i<3;i++){
+        const col = colInicioProceso + i;
+        const etiqueta = celdaXLSX_(ws, FILA_CAMPOS_GLOBAL, col);
+        if(etiqueta && String(etiqueta).trim()) etiquetas.push({ col, etiqueta: String(etiqueta).trim() });
+      }
+      return etiquetas;
+    }
+    const FILA_CAMPOS_GLOBAL = 3;
+    const procesoNota1 = nombreNota1 ? leerProceso_(COL('H')) : [];
+    const procesoNota2 = nombreNota2 ? leerProceso_(COL('O')) : [];
+    const procesoNota3 = nombreNota3 ? leerProceso_(COL('V')) : [];
+    const procesoNota4 = nombreNota4 ? leerProceso_(COL('AC')) : [];
+
     const estudiantes = [];
     for(let f=filaDatosInicio; f<=maxRow; f++){
       const ti = celdaXLSX_(ws, f, colTI);
       if(!ti) continue;
       const leerCol = (letra) => celdaXLSX_(ws, f, COL(letra));
       const leerNotaCol = (letra) => normalizarNumero_(leerCol(letra));
+      const leerProcesoDatos_ = (etiquetas) => etiquetas
+        .map(e => ({ etiqueta: e.etiqueta, valor: celdaXLSX_(ws, f, e.col) }))
+        .filter(p => p.valor !== null && p.valor !== undefined && String(p.valor).trim()!=='');
 
       const notasCrudas = [
-        nombreNota1 ? {actividad:nombreNota1, nota:leerNotaCol('F')} : null,
-        nombreNota2 ? {actividad:nombreNota2, nota:leerNotaCol('M')} : null,
-        nombreNota3 ? {actividad:nombreNota3, nota:leerNotaCol('T')} : null,
-        nombreNota4 ? {actividad:nombreNota4, nota:leerNotaCol('AA')} : null,
+        nombreNota1 ? {actividad:nombreNota1, version:leerCol('D'), nota:leerNotaCol('F'), aciertos:leerNotaCol('E'), tiempo:leerNotaCol('G'), proceso:leerProcesoDatos_(procesoNota1)} : null,
+        nombreNota2 ? {actividad:nombreNota2, version:leerCol('K'), nota:leerNotaCol('M'), aciertos:leerNotaCol('L'), tiempo:leerNotaCol('N'), proceso:leerProcesoDatos_(procesoNota2)} : null,
+        nombreNota3 ? {actividad:nombreNota3, version:leerCol('R'), nota:leerNotaCol('T'), aciertos:leerNotaCol('S'), tiempo:leerNotaCol('U'), proceso:leerProcesoDatos_(procesoNota3)} : null,
+        nombreNota4 ? {actividad:nombreNota4, version:leerCol('Y'), nota:leerNotaCol('AA'), aciertos:leerNotaCol('Z'), tiempo:leerNotaCol('AB'), proceso:leerProcesoDatos_(procesoNota4)} : null,
       ].filter(n=>n!==null);
       notasCrudas.forEach(n=>{
         if(n.nota!==null && n.nota!==undefined && typeof n.nota !== 'number'){
@@ -395,6 +416,23 @@
       const autoevalExcel = leerNotaCol('AU');
       const coevalExcel = leerNotaCol('AV');
 
+      // Nota Definitiva: la CALCULAMOS nosotros mismos (no confiamos en la fórmula del Excel,
+      // porque si el docente no recalculó antes de guardar, SheetJS lee la celda vacía y
+      // esa nota desaparece del boletín aunque las notas individuales sí estén). Usamos
+      // exactamente las notas que cuentan para heteroevaluación en cada curso — 1002 tiene
+      // una Nota2 manual (quiz en papel) que NO cuenta en el promedio.
+      const NOTAS_QUE_CUENTAN_IDX = {
+        '602':[0,1,2], '603':[0,1,2], '1001':[0,1], '1002':[0,2], '1003':[0,1]
+      }[nombreHoja] || notasCrudas.map((_,i)=>i);
+      const notasParaPromedio = NOTAS_QUE_CUENTAN_IDX.map(i=>notasCrudas[i]).filter(n=>n && typeof n.nota==='number');
+      let notaDefinitivaCalculada = null;
+      if(notasParaPromedio.length){
+        const promedioHetero = notasParaPromedio.reduce((s,n)=>s+n.nota,0)/notasParaPromedio.length;
+        const autoevalParaCalculo = (typeof autoevalExcel==='number') ? autoevalExcel : 0;
+        const coevalParaCalculo = (typeof coevalExcel==='number') ? coevalExcel : 0;
+        notaDefinitivaCalculada = Math.round((promedioHetero*0.7 + autoevalParaCalculo*0.2 + coevalParaCalculo*0.1)*10)/10;
+      }
+
       const datosEstudiante = {
         ti: String(ti), correo: (celdaXLSX_(ws,f,colEmail)||'').toString().trim().toLowerCase(),
         nombre: celdaXLSX_(ws,f,colNombre), curso: nombreHoja,
@@ -403,7 +441,7 @@
         trimestre1: { nota: notaTrimestre1, corregido: t1Corregido },
         planMejoraT1: { reportado: leerCol('AF'), entrego: leerCol('AG'), presento: leerCol('AH'), aprobo: leerCol('AI') },
         planMejoraSub2: { reportado: leerCol('AM'), entrego: leerCol('AN'), presento: leerCol('AO'), aprobo: leerCol('AP') },
-        notaDefinitiva: leerNotaCol('AW'),
+        notaDefinitiva: notaDefinitivaCalculada,
         observacionCognitiva: leerCol('AX'),
         observacionProcedimental: leerCol('AY'),
         observacionActitudinal: leerCol('AZ'),
