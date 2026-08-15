@@ -16,5 +16,5 @@ window.LINKS_ACTIVIDADES = {
   'ENTEROS PARTE 2': 'https://el-profe-git.github.io/Colegio_2026/matematicas/sexto/trimestre2/enteros-operaciones-especiales/',
   'CINEMATICA PARTE 1 -  MRU': 'https://el-profe-git.github.io/Colegio_2026/fisica/decimo/trimestre1/cinematica-mru/',
   'CINEMATICA PARTE 2 -  MRU – MUA – MOV VERTICAL – MOV PLANO': 'https://el-profe-git.github.io/Colegio_2026/fisica/decimo/trimestre2/cinematica-completa/',
-  '_AUTOEVALUACION': 'https://el-profe-git.github.io/Colegio_2026/autocoevaluacion/'
+  '_AUTOEVALUACION': 'https://el-profe-git.github.io/Colegio_2026/ACTITUDINAL/autocoevaluacion/'
 };
