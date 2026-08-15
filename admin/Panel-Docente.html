@@ -104,6 +104,16 @@
         <button class="btn secondary" id="btnSubirNotas">📊 Subir notas al boletín</button>
         <button class="btn" id="btnCrearCuentas">👤 Crear/verificar cuentas de acceso</button>
       </div>
+      <div class="fila">
+        <button class="btn secondary" id="btnSincronizarIntentos">🔄 Sincronizar notas de talleres al boletín (sin Excel)</button>
+        <button class="btn secondary" id="btnExportarResumen">📥 Exportar resumen (mejor intento por actividad)</button>
+      </div>
+      <div style="font-size:0.72rem; color:var(--slate); margin-top:2px;">
+        💡 "Sincronizar" toma la mejor nota de cada actividad directo de los talleres y la escribe en el boletín
+        de cada estudiante que ya exista — no crea boletines nuevos, ni toca asistencia/plan de mejora/observaciones
+        (eso sigue viniendo del Excel). "Exportar resumen" te da una fila por estudiante por actividad, con
+        versión/aciertos/nota/tiempo del mejor intento — útil para respaldar en tu propia planilla.
+      </div>
       <div style="font-size:0.72rem; color:var(--slate); margin-top:2px;">
         💡 Sube las notas y crea las cuentas por separado — así puedes reintentar cuentas de un solo curso sin
         tocar las notas, y viceversa. Si Firebase bloquea por actividad inusual al crear cuentas, sube de a un
@@ -943,6 +953,71 @@
     const mapa = { EN_PROGRESO:'En progreso', COMPLETADO:'Completado', COMPLETADO_MANUAL:'Completado (manual)', ANULADO_POR_DOCENTE:'Anulado' };
     return mapa[cat] || cat;
   }
+
+  /** Toma el MEJOR intento (nota más alta) de cada estudiante+actividad ya completada. */
+  function obtenerMejoresIntentos_(){
+    const mejores = {};
+    todosLosIntentos.forEach(x=>{
+      if(x.estado!=='COMPLETADO' || !x.documento || !x.actividad) return;
+      const clave = x.documento + '||' + x.actividad;
+      if(!mejores[clave] || (x.nota||0) > (mejores[clave].nota||0)) mejores[clave] = x;
+    });
+    return Object.values(mejores);
+  }
+
+  document.getElementById('btnSincronizarIntentos').addEventListener('click', async ()=>{
+    const reporte = document.getElementById('reportePlanilla');
+    reporte.textContent = 'Sincronizando…';
+    try{
+      const mejores = obtenerMejoresIntentos_();
+      const porDocumento = {};
+      mejores.forEach(x=>{ (porDocumento[x.documento] = porDocumento[x.documento]||[]).push(x); });
+
+      let actualizados = 0, sinBoletin = [];
+      for(const [ti, intentos] of Object.entries(porDocumento)){
+        const ref = db.collection('boletines').doc(ti);
+        const snap = await ref.get();
+        if(!snap.exists){ sinBoletin.push(`${intentos[0].apellidos} ${intentos[0].nombre} (TI ${ti})`); continue; }
+        const boletin = snap.data();
+        const notas = boletin.notas ? boletin.notas.map(n=>({...n})) : [];
+        intentos.forEach(intento=>{
+          const idx = notas.findIndex(n=>n.actividad===intento.actividad);
+          const datos = { actividad: intento.actividad, nota: intento.nota,
+            version: intento.version ? 'V'+String(intento.version).padStart(2,'0') : undefined,
+            aciertos: intento.puntos, tiempo: intento.segundosUsados ? Math.round(intento.segundosUsados/60*100)/100 : undefined };
+          if(idx>=0) notas[idx] = {...notas[idx], ...datos};
+          else notas.push(datos);
+        });
+        await ref.update({notas});
+        actualizados++;
+      }
+      let texto = `✅ Sincronizado.\n${actualizados} boletines actualizados con la mejor nota de cada actividad.`;
+      if(sinBoletin.length) texto += `\n\n⚠ ${sinBoletin.length} estudiante(s) sin boletín todavía (no se tocaron, primero sube su planilla):\n` + sinBoletin.map(s=>'  · '+s).join('\n');
+      reporte.textContent = texto;
+    }catch(err){
+      reporte.textContent = 'Error al sincronizar: ' + err.message;
+    }
+  });
+
+  document.getElementById('btnExportarResumen').addEventListener('click', ()=>{
+    const cursoFiltro = document.getElementById('filtroCurso').value;
+    let mejores = obtenerMejoresIntentos_();
+    if(cursoFiltro) mejores = mejores.filter(x=>String(x.curso)===cursoFiltro);
+    mejores.sort((a,b)=> (a.actividad||'').localeCompare(b.actividad||'') || String(a.curso||'').localeCompare(String(b.curso||'')) || (a.apellidos||'').localeCompare(b.apellidos||''));
+    const encabezados = ['Curso','Actividad','Apellidos','Nombres','Documento','Version','Aciertos','Nota','TiempoMin'];
+    const filas = mejores.map(x=>[
+      x.curso||'', x.actividad||'', x.apellidos||'', x.nombre||'', x.documento||'',
+      x.version ? 'V'+String(x.version).padStart(2,'0') : '', x.puntos ?? '', x.nota ?? '',
+      x.segundosUsados ? Math.round(x.segundosUsados/60*100)/100 : ''
+    ]);
+    const csv = [encabezados, ...filas].map(fila => fila.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'resumen_mejor_intento' + (cursoFiltro ? '_'+cursoFiltro : '') + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 
   document.getElementById('btnExportar').addEventListener('click', ()=>{
     const filtrados = obtenerFiltrados().slice().sort((a,b)=>{
