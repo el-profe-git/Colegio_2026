@@ -142,9 +142,21 @@
 
     <div class="card">
       <h2 style="text-align:center;">Nota Definitiva</h2>
+      <table style="font-size:0.85rem; margin-bottom:8px;">
+        <tr><td>Heteroevaluación (70%)</td><td style="text-align:right;" id="desgloseHetero">—</td></tr>
+        <tr><td>Autoevaluación (20%)</td><td style="text-align:right;" id="desgloseAuto">—</td></tr>
+        <tr><td>Coevaluación (10%)</td><td style="text-align:right;" id="desgloseCo">—</td></tr>
+        <tr style="border-top:1.5px solid var(--ink); font-weight:700;"><td>Definitiva</td><td style="text-align:right;" id="desgloseTotal">—</td></tr>
+      </table>
+      <div id="avisoNotaParcial" class="hidden" style="background:#FFF3CD; border:2px solid #C9971F; border-radius:8px; padding:10px; margin-bottom:10px; font-size:0.88rem; color:#7A5C00; text-align:center; font-weight:700;">
+        ⚠ Este número todavía NO es tu nota final. Te falta responder tu autoevaluación y/o coevaluación (20%+10%) — mientras tanto, aquí solo se refleja el 70% de heteroevaluación.
+      </div>
       <div class="nota-grande" id="notaDefinitivaTxt">—</div>
       <div id="avisoDefinitivaPendiente" class="hidden" style="background:#FCE4E4; border:1.5px solid var(--bad); border-radius:8px; padding:10px; margin-top:10px; font-size:0.85rem; color:var(--bad); text-align:center;">
         ⚠ Tu nota definitiva está <b>pendiente</b> porque te faltan notas por completar. Tienes plazo hasta el <b>18 de agosto</b> para completarlas.
+      </div>
+      <div id="avisoNotaExtrana" class="hidden" style="background:#FFF3CD; border:1.5px solid #C9971F; border-radius:8px; padding:10px; margin-top:10px; font-size:0.85rem; color:#7A5C00; text-align:center;">
+        ⚠ Este valor no parece correcto. Por favor avísale a tu docente para que lo revise — no tomes esta cifra como tu nota real todavía.
       </div>
     </div>
 
@@ -375,8 +387,37 @@
         cajaLinkAuto.classList.add('hidden');
       }
     }
-    document.getElementById('notaDefinitivaTxt').textContent = (typeof b.notaDefinitiva==='number') ? b.notaDefinitiva.toFixed(2) : '—';
+    // Nota Definitiva: escala oficial 0.0 a 5.0. Si llega un valor fuera de ese rango
+    // (por error de digitación en la planilla, o un dato mal calculado), NO se muestra
+    // como si fuera correcta — se avisa que hay que revisarla con el docente.
+    const RANGO_VALIDO_MAX = 5.2; // pequeño margen por redondeos
+    const notaEsRazonable = (n) => typeof n==='number' && n>=0 && n<=RANGO_VALIDO_MAX;
+
+    const heteroProm = (typeof b.notaDefinitiva==='number' && suma && cuenta) ? (suma/cuenta) : null;
+    document.getElementById('desgloseHetero').textContent = heteroProm!==null ? (heteroProm*0.7).toFixed(2) : '—';
+    document.getElementById('desgloseAuto').textContent = notaEsRazonable(b.autoevaluacion) ? (b.autoevaluacion*0.2).toFixed(2) : '—';
+    document.getElementById('desgloseCo').textContent = notaEsRazonable(b.coevaluacion) ? (b.coevaluacion*0.1).toFixed(2) : '—';
+
+    if(notaEsRazonable(b.notaDefinitiva)){
+      document.getElementById('notaDefinitivaTxt').textContent = b.notaDefinitiva.toFixed(2);
+      document.getElementById('desgloseTotal').textContent = b.notaDefinitiva.toFixed(2);
+      document.getElementById('avisoNotaExtrana').classList.add('hidden');
+    }else if(typeof b.notaDefinitiva === 'number'){
+      // el dato existe pero está fuera de rango: no se muestra el número crudo
+      document.getElementById('notaDefinitivaTxt').textContent = '⚠';
+      document.getElementById('desgloseTotal').textContent = '—';
+      document.getElementById('avisoNotaExtrana').classList.remove('hidden');
+    }else{
+      document.getElementById('notaDefinitivaTxt').textContent = '—';
+      document.getElementById('desgloseTotal').textContent = '—';
+      document.getElementById('avisoNotaExtrana').classList.add('hidden');
+    }
     document.getElementById('avisoDefinitivaPendiente').classList.toggle('hidden', typeof b.notaDefinitiva==='number');
+
+    // Aviso clave: si la nota definitiva SÍ existe pero autoeval/coeval están vacías, esa
+    // definitiva solo refleja el 70% heteroevaluación — no es la nota final real todavía.
+    const faltaActitudinal = !notaEsRazonable(b.autoevaluacion) || !notaEsRazonable(b.coevaluacion);
+    document.getElementById('avisoNotaParcial').classList.toggle('hidden', !(notaEsRazonable(b.notaDefinitiva) && faltaActitudinal));
 
     // Observación del docente: solo se muestra si hay un número asignado en la planilla.
     const cardObs = document.getElementById('cardObservacion');
