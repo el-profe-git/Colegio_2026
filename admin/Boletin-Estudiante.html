@@ -288,6 +288,7 @@
     try{
       const cfgSnap = await db.collection('config').doc('boletin-consulta').get();
       const habilitado = cfgSnap.exists ? (cfgSnap.data().habilitado !== false) : true;
+      window.__alertaPlanMejoraT2Habilitada = cfgSnap.exists ? (cfgSnap.data().alertaPlanMejoraT2Habilitada !== false) : true;
       if(!habilitado){
         hint.textContent = 'La consulta del boletín está temporalmente deshabilitada por tu docente. Intenta más tarde.';
         document.getElementById('btnEntrar').disabled = false;
@@ -442,9 +443,11 @@
     document.getElementById('clasesAsisTxt').textContent = (typeof b.clasesAsistidas==='number') ? b.clasesAsistidas : '—';
     document.getElementById('clasesExcTxt').textContent = (typeof b.clasesExcusadas==='number') ? b.clasesExcusadas : '—';
 
-    // alerta de plan de mejora si la definitiva esta por debajo del minimo
+    // alerta de plan de mejora si la definitiva esta por debajo del minimo, y el docente
+    // no la deshabilitó desde el Panel
     const alerta = document.getElementById('alertaMejora');
-    if(typeof b.notaDefinitiva === 'number' && b.notaDefinitiva < NOTA_MINIMA){
+    const alertaHabilitadaPorDocente = window.__alertaPlanMejoraT2Habilitada !== false;
+    if(alertaHabilitadaPorDocente && typeof b.notaDefinitiva === 'number' && b.notaDefinitiva < NOTA_MINIMA){
       alerta.classList.remove('hidden');
     }else{
       alerta.classList.add('hidden');
