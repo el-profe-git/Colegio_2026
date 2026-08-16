@@ -126,11 +126,16 @@
         <button class="btn" id="btnHabilitarConsulta">🔓 Habilitar consulta</button>
         <button class="btn warn" id="btnDeshabilitarConsulta">🔒 Deshabilitar consulta</button>
       </div>
+      <div style="font-size:0.82rem; margin:10px 0 6px 0;">Alerta "Plan de Mejora — Trimestre 2" en el boletín: <b id="estadoAlertaPlanMejoraTxt">—</b></div>
+      <div class="fila">
+        <button class="btn" id="btnHabilitarAlertaPlanMejora">✅ Habilitar alerta</button>
+        <button class="btn warn" id="btnDeshabilitarAlertaPlanMejora">🚫 Deshabilitar alerta</button>
+      </div>
     </div>
 
     <!-- ============ Autoevaluación / Coevaluación (no aparece en la tabla de actividades porque no es un intento, se guarda directo en el boletín) ============ -->
     <div class="card">
-      <h2>📝 Autoevaluación / Coevaluación — quién ya la hizo</h2>
+      <h2>📝 Autoevaluación / Coevaluación / Observaciones — vista general</h2>
       <div class="fila">
         <select id="filtroCursoAutoeval">
           <option value="">Todos los cursos</option>
@@ -140,10 +145,11 @@
         <button class="btn secondary" id="btnCargarAutoeval">🔄 Consultar</button>
         <button class="btn secondary" id="btnExportarAutoeval">📥 Exportar CSV</button>
       </div>
+      <div style="font-size:0.72rem; color:var(--slate); margin:4px 0;">Las columnas de observación muestran el número del glosario (1-4) asignado en la planilla — vacío si aún no se asignó.</div>
       <div id="resumenAutoeval" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
       <div style="max-height:320px; overflow-y:auto;">
         <table style="width:100%; font-size:0.82rem;" id="tablaAutoeval">
-          <thead><tr><th><input type="checkbox" id="chkTodosAutoeval"></th><th>Curso</th><th>Estudiante</th><th>Autoeval.</th><th>Coeval.</th></tr></thead>
+          <thead><tr><th><input type="checkbox" id="chkTodosAutoeval"></th><th>Curso</th><th>Estudiante</th><th>Autoeval.</th><th>Coeval.</th><th>Obs. Cog.</th><th>Obs. Proc.</th><th>Obs. Actit.</th><th>Obs. Gral.</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -607,6 +613,24 @@
     cargarEstadoConsulta_();
   });
 
+  async function cargarEstadoAlertaPlanMejora_(){
+    try{
+      const snap = await db.collection('config').doc('boletin-consulta').get();
+      const habilitada = snap.exists ? (snap.data().alertaPlanMejoraT2Habilitada !== false) : true;
+      document.getElementById('estadoAlertaPlanMejoraTxt').textContent = habilitada ? 'Habilitada ✅' : 'Deshabilitada 🚫';
+    }catch(err){
+      document.getElementById('estadoAlertaPlanMejoraTxt').textContent = 'No se pudo leer';
+    }
+  }
+  document.getElementById('btnHabilitarAlertaPlanMejora').addEventListener('click', async ()=>{
+    await db.collection('config').doc('boletin-consulta').set({alertaPlanMejoraT2Habilitada:true}, {merge:true});
+    cargarEstadoAlertaPlanMejora_();
+  });
+  document.getElementById('btnDeshabilitarAlertaPlanMejora').addEventListener('click', async ()=>{
+    await db.collection('config').doc('boletin-consulta').set({alertaPlanMejoraT2Habilitada:false}, {merge:true});
+    cargarEstadoAlertaPlanMejora_();
+  });
+
   function slugActividad_(nombre){
     return (nombre||'default').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -634,6 +658,7 @@
     document.getElementById('panel').classList.remove('hidden');
     cargarIntentos();
     cargarEstadoConsulta_();
+    cargarEstadoAlertaPlanMejora_();
   });
 
   document.getElementById('btnCerrarSesion').addEventListener('click', ()=>{
@@ -1107,7 +1132,11 @@
         const tr = document.createElement('tr');
         const auto = typeof b.autoevaluacion==='number' ? b.autoevaluacion.toFixed(1) : '—';
         const co = typeof b.coevaluacion==='number' ? b.coevaluacion.toFixed(1) : '—';
-        tr.innerHTML = `<td><input type="checkbox" class="chkFilaAutoeval" data-ti="${b.ti}"></td><td>${b.curso||''}</td><td>${b.nombre||''}</td><td>${auto}</td><td>${co}</td>`;
+        const obsC = b.observacionCognitiva ?? '—';
+        const obsP = b.observacionProcedimental ?? '—';
+        const obsA = b.observacionActitudinal ?? '—';
+        const obsG = b.observacionGeneral ?? '—';
+        tr.innerHTML = `<td><input type="checkbox" class="chkFilaAutoeval" data-ti="${b.ti}"></td><td>${b.curso||''}</td><td>${b.nombre||''}</td><td>${auto}</td><td>${co}</td><td style="text-align:center;">${obsC}</td><td style="text-align:center;">${obsP}</td><td style="text-align:center;">${obsA}</td><td style="text-align:center;">${obsG}</td>`;
         tbody.appendChild(tr);
       });
     }catch(err){
