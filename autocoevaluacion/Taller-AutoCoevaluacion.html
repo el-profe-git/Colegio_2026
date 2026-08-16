@@ -44,8 +44,12 @@
 
 <main>
   <div class="card" id="loginCard">
-    <p>Inicia sesión con tu cuenta institucional (@colcompartirsubaied.edu.co).</p>
-    <button class="btn" id="btnLogin">Iniciar sesión con Google</button>
+    <p>Usa tu correo institucional y tu número de documento (TI) como contraseña.</p>
+    <label style="font-size:0.8rem; color:var(--slate);">Correo</label>
+    <input type="email" id="inputCorreo" autocomplete="username" style="width:100%; padding:10px; margin:4px 0 10px 0; border:2px solid var(--ink); border-radius:8px; font-size:16px;">
+    <label style="font-size:0.8rem; color:var(--slate);">Documento (TI)</label>
+    <input type="password" id="inputClave" autocomplete="current-password" style="width:100%; padding:10px; margin:4px 0 10px 0; border:2px solid var(--ink); border-radius:8px; font-size:16px;">
+    <button class="btn" id="btnLogin">Entrar</button>
     <div id="loginHint" style="color:var(--bad); font-size:0.85rem; margin-top:8px;"></div>
   </div>
 
@@ -92,43 +96,56 @@
   let boletin = null;
   let grupoConNota3 = false; // 602/603/1002 = true, 1001/1003 = false
 
-  document.getElementById('btnLogin').addEventListener('click', ()=>{
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ hd: DOMINIO_INSTITUCIONAL });
-    auth.signInWithPopup(provider).catch(err=>{
-      document.getElementById('loginHint').textContent = 'No se pudo iniciar sesión: ' + err.message;
-    });
+  document.getElementById('btnLogin').addEventListener('click', async ()=>{
+    const correo = document.getElementById('inputCorreo').value.trim().toLowerCase();
+    const clave = document.getElementById('inputClave').value;
+    const hint = document.getElementById('loginHint');
+    hint.textContent = '';
+    if(!correo || !clave){ hint.textContent = 'Completa correo y documento.'; return; }
+    document.getElementById('btnLogin').disabled = true;
+    try{
+      try{
+        await auth.signInWithEmailAndPassword(correo, clave);
+      }catch(err){
+        if(err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential'){
+          await auth.createUserWithEmailAndPassword(correo, clave);
+        }else{
+          throw err;
+        }
+      }
+      await continuarLuegoDeLogin_(correo);
+    }catch(err){
+      hint.textContent = 'No se pudo iniciar sesión: correo o documento incorrectos.';
+      document.getElementById('btnLogin').disabled = false;
+    }
   });
 
-  auth.onAuthStateChanged(async user=>{
-    if(!user) return;
+  async function continuarLuegoDeLogin_(correo){
     const hint = document.getElementById('loginHint');
-    if(!user.email.endsWith('@'+DOMINIO_INSTITUCIONAL)){
-      hint.textContent = 'Usa tu cuenta institucional.'; auth.signOut(); return;
-    }
     try{
-      const snap = await db.collection('boletines').where('correo','==', user.email.trim().toLowerCase()).limit(1).get();
+      const snap = await db.collection('boletines').where('correo','==', correo).limit(1).get();
       if(snap.empty){
-        hint.innerHTML = `No encontramos tu boletín con el correo <b>${user.email.toLowerCase()}</b>.<br>Revisa con tu docente si ese correo coincide EXACTO (sin espacios, sin typos) con el que está en la planilla de notas.`;
+        hint.innerHTML = `No encontramos tu boletín con el correo <b>${correo}</b>.<br>Revisa con tu docente si ese correo coincide EXACTO (sin espacios, sin typos) con el que está en la planilla de notas.`;
         setTimeout(()=>auth.signOut(), 8000);
+        document.getElementById('btnLogin').disabled = false;
         return;
       }
       boletin = { id: snap.docs[0].id, ...snap.docs[0].data() };
       grupoConNota3 = ['602','603','1002'].includes(String(boletin.curso));
       if(boletin.autoevaluacion !== undefined && boletin.autoevaluacion !== null &&
          boletin.coevaluacion !== undefined && boletin.coevaluacion !== null){
-        // ya la había hecho antes: mostramos el resultado guardado, sin dejar repetir
         mostrarResultadoFinal(boletin.autoevaluacion, boletin.coevaluacion, true);
         document.getElementById('loginCard').classList.add('hidden');
         return;
       }
-      document.getElementById('nombreBienvenida').textContent = boletin.nombre || user.email;
+      document.getElementById('nombreBienvenida').textContent = boletin.nombre || correo;
       document.getElementById('loginCard').classList.add('hidden');
       document.getElementById('cardBienvenida').classList.remove('hidden');
     }catch(err){
       hint.textContent = 'Error: ' + err.message;
+      document.getElementById('btnLogin').disabled = false;
     }
-  });
+  }
 
   /* ============================================================
      Banco de preguntas
