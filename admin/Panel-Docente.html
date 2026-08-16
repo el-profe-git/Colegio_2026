@@ -138,6 +138,7 @@
           <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
         </select>
         <button class="btn secondary" id="btnCargarAutoeval">🔄 Consultar</button>
+        <button class="btn secondary" id="btnExportarAutoeval">📥 Exportar CSV</button>
       </div>
       <div id="resumenAutoeval" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
       <div style="max-height:320px; overflow-y:auto;">
@@ -1078,6 +1079,7 @@
     URL.revokeObjectURL(url);
   });
 
+  let ultimaConsultaAutoeval = [];
   document.getElementById('btnCargarAutoeval').addEventListener('click', async ()=>{
     const resumen = document.getElementById('resumenAutoeval');
     const tbody = document.querySelector('#tablaAutoeval tbody');
@@ -1093,6 +1095,7 @@
         filas.push(b);
       });
       filas.sort((a,b)=> String(a.curso||'').localeCompare(String(b.curso||'')) || (a.nombre||'').localeCompare(b.nombre||''));
+      ultimaConsultaAutoeval = filas;
       const hechos = filas.filter(b=>typeof b.autoevaluacion==='number' && typeof b.coevaluacion==='number');
       resumen.textContent = `${hechos.length} de ${filas.length} ya la respondieron.`;
       filas.forEach(b=>{
@@ -1105,6 +1108,23 @@
     }catch(err){
       resumen.textContent = 'Error: ' + err.message;
     }
+  });
+
+  document.getElementById('btnExportarAutoeval').addEventListener('click', ()=>{
+    if(!ultimaConsultaAutoeval.length){ alert('Primero dale clic a "Consultar".'); return; }
+    const encabezados = ['Curso','TI','Estudiante','Autoevaluacion','Coevaluacion'];
+    const filas = ultimaConsultaAutoeval.map(b=>[
+      b.curso||'', b.ti||'', b.nombre||'',
+      typeof b.autoevaluacion==='number' ? b.autoevaluacion.toFixed(1) : '',
+      typeof b.coevaluacion==='number' ? b.coevaluacion.toFixed(1) : ''
+    ]);
+    const csv = [encabezados, ...filas].map(fila => fila.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'autoevaluacion_coevaluacion.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
   document.getElementById('btnExportar').addEventListener('click', ()=>{
