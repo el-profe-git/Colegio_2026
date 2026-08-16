@@ -107,7 +107,7 @@
       hint.textContent = 'Usa tu cuenta institucional.'; auth.signOut(); return;
     }
     try{
-      const snap = await db.collection('boletines').where('correo','==', user.email).limit(1).get();
+      const snap = await db.collection('boletines').where('correo','==', user.email.toLowerCase()).limit(1).get();
       if(snap.empty){
         hint.textContent = 'No encontramos tu boletín. Avísale a tu docente.'; auth.signOut(); return;
       }
