@@ -143,9 +143,14 @@
       <div id="resumenAutoeval" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
       <div style="max-height:320px; overflow-y:auto;">
         <table style="width:100%; font-size:0.82rem;" id="tablaAutoeval">
-          <thead><tr><th>Curso</th><th>Estudiante</th><th>Autoeval.</th><th>Coeval.</th></tr></thead>
+          <thead><tr><th><input type="checkbox" id="chkTodosAutoeval"></th><th>Curso</th><th>Estudiante</th><th>Autoeval.</th><th>Coeval.</th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+      <div class="fila" style="margin-top:8px;">
+        <span id="contadorSeleccionAutoeval" style="font-size:0.8rem; color:var(--slate);">0 seleccionados</span>
+        <button class="btn warn" id="btnEliminarSeleccionAutoeval">🗑 Eliminar seleccionados</button>
+        <button class="btn warn" id="btnEliminarTodoAutoeval">🗑 Eliminar TODOS (curso filtrado)</button>
       </div>
     </div>
 
@@ -1102,11 +1107,71 @@
         const tr = document.createElement('tr');
         const auto = typeof b.autoevaluacion==='number' ? b.autoevaluacion.toFixed(1) : '—';
         const co = typeof b.coevaluacion==='number' ? b.coevaluacion.toFixed(1) : '—';
-        tr.innerHTML = `<td>${b.curso||''}</td><td>${b.nombre||''}</td><td>${auto}</td><td>${co}</td>`;
+        tr.innerHTML = `<td><input type="checkbox" class="chkFilaAutoeval" data-ti="${b.ti}"></td><td>${b.curso||''}</td><td>${b.nombre||''}</td><td>${auto}</td><td>${co}</td>`;
         tbody.appendChild(tr);
       });
     }catch(err){
       resumen.textContent = 'Error: ' + err.message;
+    }
+  });
+
+  document.getElementById('chkTodosAutoeval').addEventListener('change', (e)=>{
+    document.querySelectorAll('.chkFilaAutoeval').forEach(c=>c.checked = e.target.checked);
+    actualizarContadorAutoeval_();
+  });
+  document.querySelector('#tablaAutoeval tbody').addEventListener('change', (e)=>{
+    if(e.target.classList.contains('chkFilaAutoeval')) actualizarContadorAutoeval_();
+  });
+  function actualizarContadorAutoeval_(){
+    const n = document.querySelectorAll('.chkFilaAutoeval:checked').length;
+    document.getElementById('contadorSeleccionAutoeval').textContent = `${n} seleccionados`;
+  }
+
+  document.getElementById('btnEliminarSeleccionAutoeval').addEventListener('click', async ()=>{
+    const tis = Array.from(document.querySelectorAll('.chkFilaAutoeval:checked')).map(c=>c.dataset.ti);
+    if(!tis.length){ alert('No has seleccionado ningún estudiante.'); return; }
+    if(!confirm(`¿Eliminar la autoevaluación/coevaluación de ${tis.length} estudiante(s) seleccionado(s)? No se puede deshacer.`)) return;
+    const resumen = document.getElementById('resumenAutoeval');
+    resumen.textContent = 'Eliminando…';
+    try{
+      const batch = db.batch();
+      tis.forEach(ti=>{
+        batch.update(db.collection('boletines').doc(ti), {
+          autoevaluacion: firebase.firestore.FieldValue.delete(),
+          coevaluacion: firebase.firestore.FieldValue.delete()
+        });
+      });
+      await batch.commit();
+      resumen.textContent = `✅ Eliminados ${tis.length}. Dale clic a "Consultar" de nuevo para actualizar la tabla.`;
+    }catch(err){
+      resumen.textContent = 'Error al eliminar: ' + err.message;
+    }
+  });
+
+  document.getElementById('btnEliminarTodoAutoeval').addEventListener('click', async ()=>{
+    if(!ultimaConsultaAutoeval.length){ alert('Primero dale clic a "Consultar".'); return; }
+    const cursoFiltro = document.getElementById('filtroCursoAutoeval').value;
+    const etiquetaCurso = cursoFiltro ? `del curso ${cursoFiltro}` : 'de TODOS los cursos';
+    if(!confirm(`¿Eliminar la autoevaluación/coevaluación de los ${ultimaConsultaAutoeval.length} estudiantes ${etiquetaCurso}? Esto no se puede deshacer.`)) return;
+    const resumen = document.getElementById('resumenAutoeval');
+    resumen.textContent = 'Eliminando…';
+    try{
+      // Firestore permite maximo 500 operaciones por batch; se parte en bloques por seguridad
+      const tis = ultimaConsultaAutoeval.map(b=>b.ti).filter(Boolean);
+      for(let i=0;i<tis.length;i+=400){
+        const bloque = tis.slice(i,i+400);
+        const batch = db.batch();
+        bloque.forEach(ti=>{
+          batch.update(db.collection('boletines').doc(ti), {
+            autoevaluacion: firebase.firestore.FieldValue.delete(),
+            coevaluacion: firebase.firestore.FieldValue.delete()
+          });
+        });
+        await batch.commit();
+      }
+      resumen.textContent = `✅ Eliminados ${tis.length}. Dale clic a "Consultar" de nuevo para actualizar la tabla.`;
+    }catch(err){
+      resumen.textContent = 'Error al eliminar: ' + err.message;
     }
   });
 
