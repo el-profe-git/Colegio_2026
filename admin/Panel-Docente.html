@@ -128,6 +128,26 @@
       </div>
     </div>
 
+    <!-- ============ Autoevaluación / Coevaluación (no aparece en la tabla de actividades porque no es un intento, se guarda directo en el boletín) ============ -->
+    <div class="card">
+      <h2>📝 Autoevaluación / Coevaluación — quién ya la hizo</h2>
+      <div class="fila">
+        <select id="filtroCursoAutoeval">
+          <option value="">Todos los cursos</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <button class="btn secondary" id="btnCargarAutoeval">🔄 Consultar</button>
+      </div>
+      <div id="resumenAutoeval" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
+      <div style="max-height:320px; overflow-y:auto;">
+        <table style="width:100%; font-size:0.82rem;" id="tablaAutoeval">
+          <thead><tr><th>Curso</th><th>Estudiante</th><th>Autoeval.</th><th>Coeval.</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ============ CATEGORÍA 1: CONFIGURACIÓN POR ACTIVIDAD ============ -->
     <div class="card">
       <h2>⚙️ Configuración — por actividad</h2>
@@ -407,7 +427,8 @@
       // aprobatorio), sin importar cuál haya sido la nota original más baja.
       const aproboT1 = String(leerCol('AI')||'').trim().toUpperCase(); // AI = APROBO (plan T1)
       const t1Corregido = (aproboT1==='SI' || aproboT1==='SÍ');
-      let notaTrimestre1 = leerNotaCol('AK'); // AK = NOTA TRIMESTRE 1
+      const notaTrimestre1Original = leerNotaCol('AK'); // AK = NOTA TRIMESTRE 1, tal como quedó antes del plan de mejora
+      let notaTrimestre1 = notaTrimestre1Original;
       if(t1Corregido) notaTrimestre1 = 3.4;
 
       // Autoevaluación/Coevaluación: el estudiante las escribe SOLO desde el taller de
@@ -438,7 +459,7 @@
         nombre: celdaXLSX_(ws,f,colNombre), curso: nombreHoja,
         materia: (nombreHoja==='602'||nombreHoja==='603') ? 'Matemáticas' : 'Física',
         notas: notasCrudas,
-        trimestre1: { nota: notaTrimestre1, corregido: t1Corregido },
+        trimestre1: { nota: notaTrimestre1, notaAnterior: (t1Corregido ? notaTrimestre1Original : null), corregido: t1Corregido },
         planMejoraT1: { reportado: leerCol('AF'), entrego: leerCol('AG'), presento: leerCol('AH'), aprobo: leerCol('AI') },
         planMejoraSub2: { reportado: leerCol('AM'), entrego: leerCol('AN'), presento: leerCol('AO'), aprobo: leerCol('AP') },
         notaDefinitiva: notaDefinitivaCalculada,
@@ -1055,6 +1076,35 @@
     a.href = url; a.download = 'resumen_mejor_intento' + (cursoFiltro ? '_'+cursoFiltro : '') + '.csv';
     a.click();
     URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btnCargarAutoeval').addEventListener('click', async ()=>{
+    const resumen = document.getElementById('resumenAutoeval');
+    const tbody = document.querySelector('#tablaAutoeval tbody');
+    resumen.textContent = 'Consultando…';
+    tbody.innerHTML = '';
+    try{
+      const cursoFiltro = document.getElementById('filtroCursoAutoeval').value;
+      const snap = await db.collection('boletines').get();
+      let filas = [];
+      snap.forEach(doc=>{
+        const b = doc.data();
+        if(cursoFiltro && String(b.curso)!==cursoFiltro) return;
+        filas.push(b);
+      });
+      filas.sort((a,b)=> String(a.curso||'').localeCompare(String(b.curso||'')) || (a.nombre||'').localeCompare(b.nombre||''));
+      const hechos = filas.filter(b=>typeof b.autoevaluacion==='number' && typeof b.coevaluacion==='number');
+      resumen.textContent = `${hechos.length} de ${filas.length} ya la respondieron.`;
+      filas.forEach(b=>{
+        const tr = document.createElement('tr');
+        const auto = typeof b.autoevaluacion==='number' ? b.autoevaluacion.toFixed(1) : '—';
+        const co = typeof b.coevaluacion==='number' ? b.coevaluacion.toFixed(1) : '—';
+        tr.innerHTML = `<td>${b.curso||''}</td><td>${b.nombre||''}</td><td>${auto}</td><td>${co}</td>`;
+        tbody.appendChild(tr);
+      });
+    }catch(err){
+      resumen.textContent = 'Error: ' + err.message;
+    }
   });
 
   document.getElementById('btnExportar').addEventListener('click', ()=>{
