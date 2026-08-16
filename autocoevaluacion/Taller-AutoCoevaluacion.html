@@ -107,9 +107,11 @@
       hint.textContent = 'Usa tu cuenta institucional.'; auth.signOut(); return;
     }
     try{
-      const snap = await db.collection('boletines').where('correo','==', user.email.toLowerCase()).limit(1).get();
+      const snap = await db.collection('boletines').where('correo','==', user.email.trim().toLowerCase()).limit(1).get();
       if(snap.empty){
-        hint.textContent = 'No encontramos tu boletín. Avísale a tu docente.'; auth.signOut(); return;
+        hint.innerHTML = `No encontramos tu boletín con el correo <b>${user.email.toLowerCase()}</b>.<br>Revisa con tu docente si ese correo coincide EXACTO (sin espacios, sin typos) con el que está en la planilla de notas.`;
+        setTimeout(()=>auth.signOut(), 8000);
+        return;
       }
       boletin = { id: snap.docs[0].id, ...snap.docs[0].data() };
       grupoConNota3 = ['602','603','1002'].includes(String(boletin.curso));
