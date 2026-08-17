@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Educativo</title>
+<style>
+  :root{ --paper:#FAFAF7; --ink:#1F2933; --slate:#8592A0; --accent:#2F7A6F; }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; background:var(--paper); color:var(--ink);
+       min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .contenedor{max-width:380px; width:100%; text-align:center;}
+  .spinner{width:36px; height:36px; border:4px solid #E0E0DA; border-top-color:var(--accent); border-radius:50%;
+           margin:0 auto 18px auto; animation:girar 0.8s linear infinite;}
+  @keyframes girar{ to{ transform:rotate(360deg); } }
+  p{color:var(--slate); font-size:0.9rem;}
+  .enlace{display:block; background:var(--ink); color:#fff; text-decoration:none; padding:16px;
+          border-radius:10px; font-weight:700; margin-top:20px; font-size:1rem;}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+  <div class="contenedor">
+    <div class="spinner" id="spinner"></div>
+    <p id="estadoTxt">Conectando…</p>
+    <a class="enlace hidden" id="enlaceManual" href="#">Entrar manualmente</a>
+  </div>
+
+<script>
+(function(){
+  // Cloudflare es el principal; si no responde en 2.5s, se usa GitHub Pages como respaldo.
+  const PRINCIPAL = 'https://elprofeleoteexplica.elp22587.workers.dev/';
+  const RESPALDO  = 'https://el-profe-git.github.io/Colegio_2026/';
+  const TIEMPO_ESPERA_MS = 2500;
+
+  function irA(destino){
+    window.location.href = destino;
+  }
+
+  let yaRedirigido = false;
+  const controlador = new AbortController();
+  const timeoutId = setTimeout(() => {
+    if(yaRedirigido) return;
+    yaRedirigido = true;
+    controlador.abort();
+    document.getElementById('estadoTxt').textContent = 'El servidor principal no respondió, usando el respaldo…';
+    irA(RESPALDO);
+  }, TIEMPO_ESPERA_MS);
+
+  fetch(PRINCIPAL + 'config-tokens-links.js', { method: 'HEAD', signal: controlador.signal, cache: 'no-store' })
+    .then(resp => {
+      if(yaRedirigido) return;
+      clearTimeout(timeoutId);
+      yaRedirigido = true;
+      if(resp.ok){
+        irA(PRINCIPAL);
+      }else{
+        document.getElementById('estadoTxt').textContent = 'Usando el respaldo…';
+        irA(RESPALDO);
+      }
+    })
+    .catch(() => {
+      if(yaRedirigido) return;
+      clearTimeout(timeoutId);
+      yaRedirigido = true;
+      document.getElementById('estadoTxt').textContent = 'Usando el respaldo…';
+      irA(RESPALDO);
+    });
+
+  // Por si algo falla y ninguna redirección ocurre, se ofrece un enlace manual tras 5s.
+  setTimeout(() => {
+    document.getElementById('enlaceManual').href = RESPALDO;
+    document.getElementById('enlaceManual').classList.remove('hidden');
+  }, 5000);
+})();
+</script>
+</body>
+</html>
