@@ -4,13 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel del Docente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/tema-institucional.css">
 <style>
-  :root{
-    --paper:#FAFAF7; --ink:#1F2933; --slate:#8592A0;
-    --accent:#2F7A6F; --accent-dark:#215951; --mustard:#D9A441; --bad:#B3452C; --card:#FFFFFF;
-  }
   *{box-sizing:border-box;}
-  body{margin:0; font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; background:var(--paper); color:var(--ink);}
+  body{margin:0;}
   header{padding:12px 16px; border-bottom:2px solid var(--ink); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;}
   header h1{margin:0; font-size:1.05rem;}
   #versionTxt{font-size:0.65rem; color:var(--slate); display:block;}
@@ -52,11 +51,26 @@
     select, input[type=text]{width:100%;}
     table{font-size:0.7rem;}
   }
+  #panel{display:flex; gap:16px; align-items:flex-start;}
+  .sidebar-panel{display:flex; flex-direction:column; gap:4px; min-width:190px; position:sticky; top:14px;}
+  .btn-menu{background:transparent; border:none; text-align:left; padding:10px 12px; border-radius:8px;
+            font-size:0.85rem; font-weight:600; cursor:pointer; color:var(--ink);}
+  .btn-menu:hover{background:var(--paper);}
+  .btn-menu.activo{background:var(--ink); color:#fff;}
+  .contenido-panel{flex:1; min-width:0;}
+  .vista-panel{display:none;}
+  .vista-panel.activa{display:block;}
+  @media (max-width:900px){
+    #panel{flex-direction:column;}
+    .sidebar-panel{flex-direction:row; flex-wrap:wrap; position:static; width:100%;}
+    .btn-menu{flex:1; text-align:center; min-width:120px;}
+  }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="https://el-profe-git.github.io/Colegio_2026/config-compartida.js"></script>
+<script src="https://el-profe-git.github.io/Colegio_2026/calendario-academico.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -82,6 +96,15 @@
   <div class="hidden" id="panel">
 
     <!-- ============ CATEGORÍA 0: BOLETÍN — CARGAR PLANILLA DE NOTAS ============ -->
+    <nav class="sidebar-panel" id="sidebarPanel">
+      <button class="btn-menu activo" data-vista="notas">📊 Notas y Boletín</button>
+      <button class="btn-menu" data-vista="autoeval">📝 Autoeval / Observaciones</button>
+      <button class="btn-menu" data-vista="asistencia">📅 Asistencia</button>
+      <button class="btn-menu" data-vista="actividades">⚙️ Actividades</button>
+      <button class="btn-menu" data-vista="resultados">📋 Resultados</button>
+    </nav>
+    <div class="contenido-panel" id="contenidoPanel">
+    <div class="vista-panel activa" data-vista="notas">
     <div class="card">
       <h2>📤 Boletín — Cargar planilla de notas</h2>
       <div style="font-size:0.78rem; color:var(--slate); margin-bottom:8px;">
@@ -99,6 +122,15 @@
           <option value="1002">Solo 1002</option>
           <option value="1003">Solo 1003</option>
         </select>
+      </div>
+      <div class="fila">
+        <label style="font-size:0.82rem; display:flex; align-items:center; gap:6px;">¿Para qué trimestre es esta subida?
+          <select id="selectTrimestreDestino">
+            <option value="1">Trimestre 1 (histórico — no toca el trimestre en curso)</option>
+            <option value="2" selected>Trimestre 2 (en curso — así funciona hoy)</option>
+            <option value="3">Trimestre 3 (histórico — no toca el trimestre en curso)</option>
+          </select>
+        </label>
       </div>
       <div class="fila">
         <button class="btn secondary" id="btnSubirNotas">📊 Subir notas al boletín</button>
@@ -131,7 +163,23 @@
         <button class="btn" id="btnHabilitarAlertaPlanMejora">✅ Habilitar alerta</button>
         <button class="btn warn" id="btnDeshabilitarAlertaPlanMejora">🚫 Deshabilitar alerta</button>
       </div>
+
+      <hr style="border:none; border-top:1.5px dashed #ccc; margin:14px 0;">
+      <div style="font-size:0.82rem; margin-bottom:6px;">
+        <b>🧊 Congelar trimestre</b> — guarda las notas actuales de este curso como "Trimestre N" definitivo
+        (aplicando la corrección a 3.4 si el estudiante aprobó su plan de mejora), y deja las notas en blanco
+        para empezar el siguiente trimestre limpio. <b>No se puede deshacer con un clic — revisa bien el curso
+        seleccionado arriba antes de usarlo.</b>
+      </div>
+      <div id="reporteCongelar" style="font-size:0.8rem; margin-bottom:8px; white-space:pre-wrap;"></div>
+      <div class="fila">
+        <button class="btn warn" id="btnCongelarT1">🧊 Congelar Trimestre 1</button>
+        <button class="btn warn" id="btnCongelarT2">🧊 Congelar Trimestre 2</button>
+        <button class="btn warn" id="btnCongelarT3">🧊 Congelar Trimestre 3</button>
+      </div>
     </div>
+    </div><!-- /vista-notas -->
+    <div class="vista-panel" data-vista="autoeval">
 
     <!-- ============ Autoevaluación / Coevaluación (no aparece en la tabla de actividades porque no es un intento, se guarda directo en el boletín) ============ -->
     <div class="card">
@@ -144,6 +192,10 @@
         </select>
         <button class="btn secondary" id="btnCargarAutoeval">🔄 Consultar</button>
         <button class="btn secondary" id="btnExportarAutoeval">📥 Exportar CSV</button>
+      </div>
+      <div class="fila" style="margin-top:6px;">
+        <input type="file" id="inputCsvAutoeval" accept=".csv" style="max-width:220px;">
+        <button class="btn secondary" id="btnImportarCsvAutoeval">📥 Importar CSV (Autoeval/Coeval)</button>
       </div>
       <div style="font-size:0.72rem; color:var(--slate); margin:4px 0;">Las columnas de observación muestran el número del glosario (1-4) asignado en la planilla — vacío si aún no se asignó.</div>
       <div id="resumenAutoeval" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
@@ -159,6 +211,35 @@
         <button class="btn warn" id="btnEliminarTodoAutoeval">🗑 Eliminar TODOS (curso filtrado)</button>
       </div>
     </div>
+    </div><!-- /vista-autoeval -->
+    <div class="vista-panel" data-vista="asistencia">
+
+    <!-- ============ Asistencia (cuadrícula por curso, guarda en vivo) ============ -->
+    <div class="card">
+      <h2>📅 Asistencia — por curso</h2>
+      <div style="font-size:0.72rem; color:var(--slate); margin-bottom:8px;">
+        ⚠ Las fechas se calculan solas desde <code>calendario-academico.js</code> (horario + trimestre + festivos)
+        — mientras ese archivo tenga los valores de EJEMPLO, las fechas mostradas también serán de ejemplo.
+        Marca <b>F</b> = falla, <b>E</b> = falla excusada. Vacío = asistió. Cada celda se guarda sola al salir de ella.
+      </div>
+      <div class="fila">
+        <select id="filtroCursoAsistencia">
+          <option value="">Selecciona un curso…</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <button class="btn secondary" id="btnCargarAsistencia">🔄 Cargar cuadrícula</button>
+      </div>
+      <div id="resumenAsistencia" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
+      <div class="tabla-scroll" style="max-height:420px; overflow:auto;">
+        <table style="width:100%; font-size:0.8rem; border-collapse:collapse;" id="tablaAsistencia">
+          <thead><tr id="filaFechasAsistencia"><th style="position:sticky; left:0; background:var(--paper);">Estudiante</th></tr></thead>
+          <tbody id="cuerpoAsistencia"></tbody>
+        </table>
+      </div>
+    </div>
+    </div><!-- /vista-asistencia -->
+    <div class="vista-panel" data-vista="actividades">
 
     <!-- ============ CATEGORÍA 1: CONFIGURACIÓN POR ACTIVIDAD ============ -->
     <div class="card">
@@ -202,6 +283,8 @@
         <button class="btn warn" id="btnCerrarTodas">🔒 Cerrar TODAS</button>
       </div>
     </div>
+    </div><!-- /vista-actividades -->
+    <div class="vista-panel" data-vista="resultados">
 
     <!-- ============ CATEGORÍA 2: FILTROS Y BÚSQUEDA ============ -->
     <div class="card">
@@ -261,6 +344,8 @@
             </tr>
           </thead>
           <tbody id="tablaBody"></tbody>
+    </div><!-- /vista-resultados -->
+    </div><!-- /contenido-panel -->
         </table>
       </div>
       <div id="hint"></div>
@@ -473,7 +558,10 @@
         notas: notasCrudas,
         trimestre1: { nota: notaTrimestre1, notaAnterior: (t1Corregido ? notaTrimestre1Original : null), corregido: t1Corregido },
         planMejoraT1: { reportado: leerCol('AF'), entrego: leerCol('AG'), presento: leerCol('AH'), aprobo: leerCol('AI') },
-        planMejoraSub2: { reportado: leerCol('AM'), entrego: leerCol('AN'), presento: leerCol('AO'), aprobo: leerCol('AP') },
+        // Estas columnas del Excel (AM-AP) se REUTILIZAN igual cada trimestre — representan
+        // "el plan de mejora del trimestre que esté activo ahora" (Subcomisión II en T2,
+        // Subcomisión III en T3, etc.), por eso el nombre interno es genérico, no fijo a T2.
+        planMejoraSubcomisionActual: { reportado: leerCol('AM'), entrego: leerCol('AN'), presento: leerCol('AO'), aprobo: leerCol('AP') },
         notaDefinitiva: notaDefinitivaCalculada,
         observacionCognitiva: leerCol('AX'),
         observacionProcedimental: leerCol('AY'),
@@ -568,6 +656,7 @@
   // ---------- Botón 2: subir notas al boletín (no toca cuentas, no puede disparar el bloqueo de Firebase) ----------
   document.getElementById('btnSubirNotas').addEventListener('click', async ()=>{
     const reporte = document.getElementById('reportePlanilla');
+    const trimestreDestino = document.getElementById('selectTrimestreDestino').value; // '1', '2' o '3'
     try{
       reporte.textContent = 'Leyendo archivo…';
       const porHoja = await leerPlanillaElegida_(hojasElegidas_());
@@ -579,7 +668,17 @@
         let batch = db.batch();
         let contador = 0;
         for(const est of estudiantes){
-          batch.set(db.collection('boletines').doc(est.ti), est, {merge:true});
+          if(trimestreDestino === '2'){
+            // Comportamiento de siempre: escribe directo en los campos "en vivo" del boletín.
+            batch.set(db.collection('boletines').doc(est.ti), est, {merge:true});
+          }else{
+            // Trimestre histórico (1 o 3): el detalle completo se guarda ANIDADO dentro de
+            // trimestreN, sin tocar ni un solo campo en vivo (notas actuales, asistencia, etc.)
+            batch.set(db.collection('boletines').doc(est.ti), {
+              [`trimestre${trimestreDestino}`]: est,
+              nombre: est.nombre, correo: est.correo, curso: est.curso, materia: est.materia
+            }, {merge:true});
+          }
           contador++;
           if(contador % 400 === 0){ await batch.commit(); batch = db.batch(); }
         }
@@ -587,7 +686,8 @@
         totalEstudiantes += estudiantes.length;
         lineas.push(`${hoja}: ${estudiantes.length} estudiantes subidos`);
       }
-      let texto = `✅ Notas subidas.\n` + lineas.join('\n');
+      const etiquetaTrimestre = trimestreDestino==='2' ? 'Trimestre 2 (en curso)' : `Trimestre ${trimestreDestino} (histórico)`;
+      let texto = `✅ Notas subidas a ${etiquetaTrimestre}.\n` + lineas.join('\n');
       if(totalAvisos.length) texto += `\n\n⚠ ${totalAvisos.length} aviso(s) — revisar a mano en la planilla:\n` + totalAvisos.map(a=>'  · '+a).join('\n');
       reporte.textContent = texto;
     }catch(err){
@@ -631,6 +731,76 @@
     cargarEstadoAlertaPlanMejora_();
   });
 
+  // T1 es único y nunca se repite, por eso tiene su propio campo fijo (planMejoraT1).
+  // T2 y T3 comparten las MISMAS columnas del Excel (se reutilizan cada trimestre), por
+  // eso ambos leen del mismo campo genérico planMejoraSubcomisionActual.
+  const CAMPO_PLAN_MEJORA_POR_TRIMESTRE = { 1: 'planMejoraT1', 2: 'planMejoraSubcomisionActual', 3: 'planMejoraSubcomisionActual' };
+
+  async function congelarTrimestre_(numero){
+    const cursoFiltro = document.getElementById('filtroCurso').value;
+    const reporte = document.getElementById('reporteCongelar');
+    if(!cursoFiltro){
+      reporte.textContent = '⚠ Selecciona un curso específico arriba (no "Todos") antes de congelar — es una medida de seguridad para no afectar cursos por error.';
+      return;
+    }
+    if(!confirm(`¿Congelar el Trimestre ${numero} del curso ${cursoFiltro}? Esto guarda las notas actuales como definitivas de ese trimestre y deja las notas en blanco para el siguiente. No se puede deshacer con un clic.`)) return;
+
+    reporte.textContent = 'Congelando…';
+    try{
+      const snap = await db.collection('boletines').get();
+      const campoPlan = CAMPO_PLAN_MEJORA_POR_TRIMESTRE[numero];
+      let procesados = 0, corregidos = 0, sinNota = [];
+      const batch = db.batch();
+      snap.forEach(doc=>{
+        const b = doc.data();
+        if(String(b.curso) !== cursoFiltro) return;
+        const notaAnterior = (typeof b.notaDefinitiva === 'number') ? b.notaDefinitiva : null;
+        if(notaAnterior === null){ sinNota.push(b.nombre || doc.id); return; }
+        const planTrimestre = b[campoPlan] || {};
+        const aprobado = String(planTrimestre.aprobo || '').trim().toUpperCase();
+        const corregido = (aprobado === 'SI' || aprobado === 'SÍ');
+        const notaFinalTrimestre = corregido ? 3.4 : notaAnterior;
+        batch.update(doc.ref, {
+          // El historial de cada trimestre guarda TODO lo que tenía en vivo -- no solo la
+          // nota final -- para que después se pueda consultar exactamente cómo le fue en
+          // autoevaluación, coevaluación, observaciones y asistencia de ESE trimestre.
+          [`trimestre${numero}`]: {
+            nota: notaFinalTrimestre, notaAnterior: corregido ? notaAnterior : null, corregido,
+            fecha: new Date().toISOString().slice(0,10), // AAAA-MM-DD, la fecha exacta del congelamiento
+            planMejora: planTrimestre,
+            notas: b.notas || [],
+            autoevaluacion: (typeof b.autoevaluacion === 'number') ? b.autoevaluacion : null,
+            coevaluacion: (typeof b.coevaluacion === 'number') ? b.coevaluacion : null,
+            observacionCognitiva: b.observacionCognitiva || null,
+            observacionProcedimental: b.observacionProcedimental || null,
+            observacionActitudinal: b.observacionActitudinal || null,
+            observacionGeneral: b.observacionGeneral || null,
+            clasesProgramadas: (typeof b.clasesProgramadas === 'number') ? b.clasesProgramadas : null,
+            clasesAsistidas: (typeof b.clasesAsistidas === 'number') ? b.clasesAsistidas : null,
+            clasesExcusadas: (typeof b.clasesExcusadas === 'number') ? b.clasesExcusadas : null
+          },
+          notas: [], notaDefinitiva: firebase.firestore.FieldValue.delete(),
+          autoevaluacion: firebase.firestore.FieldValue.delete(), coevaluacion: firebase.firestore.FieldValue.delete(),
+          observacionCognitiva: firebase.firestore.FieldValue.delete(), observacionProcedimental: firebase.firestore.FieldValue.delete(),
+          observacionActitudinal: firebase.firestore.FieldValue.delete(), observacionGeneral: firebase.firestore.FieldValue.delete(),
+          clasesProgramadas: firebase.firestore.FieldValue.delete(), clasesAsistidas: firebase.firestore.FieldValue.delete(),
+          clasesExcusadas: firebase.firestore.FieldValue.delete()
+        });
+        procesados++;
+        if(corregido) corregidos++;
+      });
+      await batch.commit();
+      let texto = `✅ Trimestre ${numero} congelado para ${procesados} estudiante(s) del curso ${cursoFiltro}. ${corregidos} con corrección por plan de mejora.`;
+      if(sinNota.length) texto += `\n⚠ ${sinNota.length} sin nota definitiva, no se tocaron: ${sinNota.join(', ')}`;
+      reporte.textContent = texto;
+    }catch(err){
+      reporte.textContent = 'Error al congelar: ' + err.message;
+    }
+  }
+  document.getElementById('btnCongelarT1').addEventListener('click', ()=>congelarTrimestre_(1));
+  document.getElementById('btnCongelarT2').addEventListener('click', ()=>congelarTrimestre_(2));
+  document.getElementById('btnCongelarT3').addEventListener('click', ()=>congelarTrimestre_(3));
+
   function slugActividad_(nombre){
     return (nombre||'default').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -659,6 +829,15 @@
     cargarIntentos();
     cargarEstadoConsulta_();
     cargarEstadoAlertaPlanMejora_();
+  });
+
+  // ============ Navegación del menú lateral ============
+  document.querySelectorAll('.btn-menu').forEach(boton=>{
+    boton.addEventListener('click', ()=>{
+      const vista = boton.dataset.vista;
+      document.querySelectorAll('.btn-menu').forEach(b=>b.classList.toggle('activo', b===boton));
+      document.querySelectorAll('.vista-panel').forEach(v=>v.classList.toggle('activa', v.dataset.vista===vista));
+    });
   });
 
   document.getElementById('btnCerrarSesion').addEventListener('click', ()=>{
@@ -1201,6 +1380,147 @@
       resumen.textContent = `✅ Eliminados ${tis.length}. Dale clic a "Consultar" de nuevo para actualizar la tabla.`;
     }catch(err){
       resumen.textContent = 'Error al eliminar: ' + err.message;
+    }
+  });
+
+  // ============ Asistencia: fechas reales calculadas desde calendario-academico.js ============
+  const DIAS_SEMANA_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+  function generarFechasDeClase_(curso, numeroTrimestre){
+    const cal = window.CALENDARIO_ACADEMICO;
+    if(!cal){ return { error: 'No se encontró calendario-academico.js — revisa que esté cargado.' }; }
+    const trimestre = cal.trimestres && cal.trimestres[numeroTrimestre];
+    const horarioCurso = cal.horarios && cal.horarios[curso];
+    if(!trimestre) return { error: `No hay fechas configuradas para el Trimestre ${numeroTrimestre} en calendario-academico.js.` };
+    if(!horarioCurso || !horarioCurso.dias || !horarioCurso.dias.length) return { error: `No hay horario configurado para el curso ${curso} en calendario-academico.js.` };
+
+    const festivos = new Set(cal.festivos || []);
+    const diasPermitidos = new Set(horarioCurso.dias);
+    const fechas = [];
+    let cursor = new Date(trimestre.inicio + 'T00:00:00');
+    const fin = new Date(trimestre.fin + 'T00:00:00');
+    while(cursor <= fin){
+      const iso = cursor.toISOString().slice(0,10);
+      const nombreDia = DIAS_SEMANA_ES[cursor.getDay()];
+      if(diasPermitidos.has(nombreDia) && !festivos.has(iso)){
+        fechas.push(iso);
+      }
+      cursor.setDate(cursor.getDate()+1);
+    }
+    return { fechas };
+  }
+
+  let trimestreAsistenciaActual = 2; // por ahora fijo al trimestre en curso; se puede exponer como selector despues
+
+  document.getElementById('btnCargarAsistencia').addEventListener('click', async ()=>{
+    const curso = document.getElementById('filtroCursoAsistencia').value;
+    const resumen = document.getElementById('resumenAsistencia');
+    const filaFechas = document.getElementById('filaFechasAsistencia');
+    const cuerpo = document.getElementById('cuerpoAsistencia');
+    filaFechas.innerHTML = '<th style="position:sticky; left:0; background:var(--paper);">Estudiante</th>';
+    cuerpo.innerHTML = '';
+    if(!curso){ resumen.textContent = 'Selecciona un curso primero.'; return; }
+
+    const resultado = generarFechasDeClase_(curso, trimestreAsistenciaActual);
+    if(resultado.error){ resumen.textContent = '⚠ ' + resultado.error; return; }
+    const fechas = resultado.fechas;
+    if(!fechas.length){ resumen.textContent = 'No se generó ninguna fecha de clase con la configuración actual — revisa el calendario.'; return; }
+
+    resumen.textContent = `Cargando ${fechas.length} fechas de clase…`;
+    fechas.forEach(f=>{
+      const th = document.createElement('th');
+      th.style.cssText = 'font-size:0.68rem; white-space:nowrap; padding:4px;';
+      th.textContent = f.slice(5); // MM-DD, para no ocupar tanto espacio
+      filaFechas.appendChild(th);
+    });
+
+    try{
+      const snap = await db.collection('boletines').where('curso','==', curso).get();
+      const estudiantes = [];
+      snap.forEach(doc=> estudiantes.push({ id: doc.id, ...doc.data() }));
+      estudiantes.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+
+      estudiantes.forEach(est=>{
+        const tr = document.createElement('tr');
+        const tdNombre = document.createElement('td');
+        tdNombre.textContent = est.nombre || est.id;
+        tdNombre.style.cssText = 'position:sticky; left:0; background:#fff; font-weight:600; white-space:nowrap; padding:4px;';
+        tr.appendChild(tdNombre);
+        const asistenciaGuardada = est.asistenciaDiaria || {};
+        fechas.forEach(f=>{
+          const td = document.createElement('td');
+          const input = document.createElement('input');
+          input.type = 'text'; input.maxLength = 1;
+          input.value = asistenciaGuardada[f] || '';
+          input.style.cssText = 'width:28px; text-align:center; font-size:0.8rem; padding:2px;';
+          input.addEventListener('blur', async ()=>{
+            let v = input.value.trim().toUpperCase();
+            if(v !== 'F' && v !== 'E' && v !== ''){ input.value = ''; v=''; }
+            else{ input.value = v; }
+            const campo = `asistenciaDiaria.${f}`;
+            try{
+              if(v===''){
+                await db.collection('boletines').doc(est.id).update({ [campo]: firebase.firestore.FieldValue.delete() });
+              }else{
+                await db.collection('boletines').doc(est.id).update({ [campo]: v });
+              }
+              input.style.background = '#DFF0E4';
+              setTimeout(()=>{ input.style.background=''; }, 600);
+            }catch(err){
+              input.style.background = '#FCE4E4';
+              alert('No se pudo guardar: ' + err.message);
+            }
+          });
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+        cuerpo.appendChild(tr);
+      });
+      resumen.textContent = `✅ ${estudiantes.length} estudiantes, ${fechas.length} fechas de clase. Cada celda se guarda sola al salir de ella.`;
+    }catch(err){
+      resumen.textContent = 'Error al cargar: ' + err.message;
+    }
+  });
+
+  document.getElementById('btnImportarCsvAutoeval').addEventListener('click', async ()=>{
+    const archivo = document.getElementById('inputCsvAutoeval').files[0];
+    const resumen = document.getElementById('resumenAutoeval');
+    if(!archivo){ resumen.textContent = 'Selecciona un archivo CSV primero.'; return; }
+    resumen.textContent = 'Leyendo CSV…';
+    try{
+      const texto = await archivo.text();
+      const filas = texto.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l=>l.trim());
+      const encabezado = filas[0].split(',').map(h=>h.trim().toLowerCase());
+      const idxTi = encabezado.indexOf('ti');
+      const idxAuto = encabezado.indexOf('autoevaluacion');
+      const idxCo = encabezado.indexOf('coevaluacion');
+      if(idxTi<0 || idxAuto<0 || idxCo<0){
+        resumen.textContent = '⚠ El CSV debe tener columnas "TI", "Autoevaluacion" y "Coevaluacion" (coincide con el que exporta este mismo Panel).';
+        return;
+      }
+      let actualizados = 0, omitidos = [];
+      const batch = db.batch();
+      for(let i=1; i<filas.length; i++){
+        // separacion simple respetando comillas, igual formato que el que este Panel exporta
+        const cols = filas[i].match(/(".*?"|[^,]+)(?=,|$)/g).map(c=>c.replace(/^"|"$/g,'').replace(/""/g,'"'));
+        const ti = (cols[idxTi]||'').trim();
+        const autoTxt = (cols[idxAuto]||'').trim();
+        const coTxt = (cols[idxCo]||'').trim();
+        if(!ti){ continue; }
+        const autoNum = parseFloat(autoTxt), coNum = parseFloat(coTxt);
+        if(isNaN(autoNum) && isNaN(coNum)){ omitidos.push(ti); continue; } // fila sin datos, se deja igual
+        const datos = {};
+        if(!isNaN(autoNum)) datos.autoevaluacion = autoNum;
+        if(!isNaN(coNum)) datos.coevaluacion = coNum;
+        batch.update(db.collection('boletines').doc(ti), datos);
+        actualizados++;
+      }
+      await batch.commit();
+      let texto2 = `✅ ${actualizados} estudiante(s) actualizados desde el CSV (solo autoevaluación/coevaluación, ninguna nota se tocó).`;
+      if(omitidos.length) texto2 += `\n⚠ ${omitidos.length} fila(s) sin valores numéricos, se dejaron igual.`;
+      resumen.textContent = texto2;
+    }catch(err){
+      resumen.textContent = 'Error al importar: ' + err.message;
     }
   });
 

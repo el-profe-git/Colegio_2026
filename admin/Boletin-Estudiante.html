@@ -4,13 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Boletín del Estudiante</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/tema-institucional.css">
 <style>
-  :root{
-    --paper:#FAFAF7; --ink:#1F2933; --slate:#8592A0;
-    --accent:#2F7A6F; --accent-dark:#215951; --mustard:#D9A441; --bad:#B3452C; --card:#FFFFFF;
-  }
   *{box-sizing:border-box;}
-  body{margin:0; font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; background:var(--paper); color:var(--ink);}
   header{padding:14px 18px; border-bottom:2px solid var(--ink); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
   header img{height:40px;}
   main{max-width:720px; margin:0 auto; padding:16px;}
@@ -30,7 +28,7 @@
     .nota-grande{font-size:2.4rem;}
   }
   .card{background:var(--card); border:2px solid var(--ink); border-radius:10px; padding:16px; margin-bottom:16px;}
-  .card h2{margin:0 0 10px 0; font-size:1rem; color:var(--accent-dark); border-left:4px solid var(--accent); padding-left:8px;}
+  .card h2{margin:0 0 10px 0; font-size:1rem;}
   label{font-size:0.8rem; font-weight:700; color:var(--slate); display:block; margin-bottom:4px;}
   input[type=email], input[type=password], select, textarea{
     width:100%; padding:10px; border:1.5px solid var(--ink); border-radius:8px; font-size:16px; margin-bottom:12px; font-family:inherit;
@@ -48,7 +46,11 @@
   .badge-si{background:#DCEEE9; color:var(--accent-dark);}
   .badge-no{background:#FCE4E4; color:var(--bad);}
   .badge-neutro{background:#eee; color:var(--slate);}
-  .badge-recupero{background:#FCEED3; color:#8A5A00;}
+  .bloque-trimestre{border:1.5px solid #E3E1D8; border-radius:8px; padding:12px; margin-bottom:10px;}
+  .bloque-trimestre h3{margin:0 0 8px 0; font-size:0.95rem; display:flex; justify-content:space-between; align-items:baseline;}
+  .bloque-trimestre .fecha-trimestre{font-size:0.7rem; color:var(--slate); font-weight:400;}
+  .bloque-trimestre .frase-docente{font-size:0.85rem; font-style:italic; color:var(--accent-dark); margin-top:8px; padding-top:8px; border-top:1px dashed #E3E1D8;}
+  .bloque-trimestre img.imagen-trimestre{max-width:100%; border-radius:6px; margin-top:8px;}
   .nota-mala{color:var(--bad); font-weight:800;}
   .aviso-pendiente{color:var(--bad); font-size:0.78rem; font-style:italic;}
   #hintLogin{color:var(--bad); font-size:0.85rem; margin-top:6px;}
@@ -102,22 +104,16 @@
     </div>
 
     <div class="card">
-      <h2>Resumen por trimestre</h2>
-      <table>
-        <tr>
-          <td>Trimestre 1</td>
-          <td id="t1Txt" style="text-align:right; font-weight:700;">—</td>
-        </tr>
-        <tr>
-          <td>Trimestre 2</td>
-          <td id="t2Txt" style="text-align:right; font-weight:700;">—</td>
-        </tr>
-        <tr id="filaT3" class="hidden">
-          <td>Trimestre 3</td>
-          <td id="t3Txt" style="text-align:right; font-weight:700;">—</td>
-        </tr>
-      </table>
-      <div style="font-size:0.72rem; color:var(--slate); margin-top:6px;" id="notaT1Explicacion"></div>
+      <h2>📆 Boletín por Trimestre</h2>
+      <!-- ============================================================
+           BLOQUE VISUAL POR TRIMESTRE — separado a propósito de la lógica
+           de cálculo, para poder agregar imagen/frase/animación por
+           trimestre más adelante sin tocar el resto del archivo.
+           Cada uno de estos 3 contenedores se llena con renderBloqueTrimestre_().
+           ============================================================ -->
+      <div id="bloqueTrimestre1" class="bloque-trimestre"></div>
+      <div id="bloqueTrimestre2" class="bloque-trimestre"></div>
+      <div id="bloqueTrimestre3" class="bloque-trimestre"></div>
     </div>
 
     <div class="card">
@@ -177,16 +173,6 @@
     <div class="card">
       <h2>Proceso formativo (talleres)</h2>
       <div id="talleresTxt"></div>
-    </div>
-
-    <div class="card">
-      <h2>Estrategia de mejora — Trimestre 1</h2>
-      <div id="planT1Txt"></div>
-    </div>
-
-    <div class="card">
-      <h2>Estrategia de mejora — Subcomisión II</h2>
-      <div id="planSub2Txt"></div>
     </div>
 
     <div class="card">
@@ -333,17 +319,78 @@
     document.getElementById('nombreTxt').textContent = b.nombre || '';
     document.getElementById('datosTxt').textContent = `TI ${b.ti} · Curso ${b.curso}`;
 
-    // Resumen por trimestre — el Trimestre 3 aparece solo si algún día existe el dato (crece solo, sin tocar código).
-    const t1 = b.trimestre1;
-    document.getElementById('t1Txt').innerHTML = (t1 && typeof t1.nota==='number')
-      ? `${t1.nota.toFixed(1)}` + (t1.corregido ? ' <span class="badge badge-recupero">RECUPERÓ</span>' : '')
-      : '—';
-    document.getElementById('notaT1Explicacion').textContent = (t1 && t1.corregido)
-      ? 'La nota del Trimestre 1 quedó en 3.4 porque presentaste y aprobaste tu plan de mejora de ese trimestre.' : '';
-    document.getElementById('t2Txt').textContent = (typeof b.notaDefinitiva==='number') ? b.notaDefinitiva.toFixed(2) : '—';
-    if(typeof b.notaTrimestre3 === 'number'){
-      document.getElementById('filaT3').classList.remove('hidden');
-      document.getElementById('t3Txt').textContent = b.notaTrimestre3.toFixed(2);
+    // ============================================================
+    // BLOQUE VISUAL POR TRIMESTRE (fusionado: nota + fecha + plan de mejora)
+    // Separado del resto a propósito — aquí es donde se agregaría a futuro
+    // una imagen o frase personalizada por trimestre (lee congelado.frase /
+    // congelado.imagenUrl si el docente los define desde el Panel).
+    // ============================================================
+    const NOMBRE_PLAN_POR_TRIMESTRE = { 1: 'Plan de Mejora — Trimestre 1', 2: 'Plan de Mejora — Subcomisión II', 3: 'Plan de Mejora — Subcomisión III' };
+    const CAMPO_PLAN_LIVE_POR_TRIMESTRE = { 1: 'planMejoraT1', 2: 'planMejoraSubcomisionActual', 3: 'planMejoraSubcomisionActual' };
+    function badgeSiNo_(valor){
+      const txt = String(valor||'').trim().toUpperCase();
+      if(txt==='SI'||txt==='SÍ') return '<span class="badge" style="background:#DFF0E4;color:#1E6B3A;">Sí</span>';
+      if(txt==='NO') return '<span class="badge" style="background:#FCE4E4;color:var(--bad);">No</span>';
+      return '<span class="badge" style="background:#EEEEEA;color:var(--slate);">—</span>';
+    }
+    function renderBloqueTrimestre_(numero, congelado, esElActivo){
+      const cont = document.getElementById(`bloqueTrimestre${numero}`);
+      const nombrePlan = NOMBRE_PLAN_POR_TRIMESTRE[numero];
+      let notaHtml = '—', fechaHtml = '', planData = null;
+
+      if(congelado && typeof congelado.nota === 'number'){
+        const anterior = (typeof congelado.notaAnterior === 'number')
+          ? `<span style="color:var(--slate); font-weight:400;">${congelado.notaAnterior.toFixed(1)} → </span>` : '';
+        notaHtml = anterior + congelado.nota.toFixed(1) + (congelado.corregido ? ' <span class="badge badge-recupero">RECUPERÓ</span>' : '');
+        if(congelado.fecha) fechaHtml = `<span class="fecha-trimestre">Cerrado el ${congelado.fecha}</span>`;
+        planData = congelado.planMejora || null;
+      }else if(esElActivo && typeof b.notaDefinitiva === 'number'){
+        notaHtml = b.notaDefinitiva.toFixed(1) + ' <span style="font-size:0.7rem; color:var(--slate);">(en curso)</span>';
+        planData = b[CAMPO_PLAN_LIVE_POR_TRIMESTRE[numero]] || null;
+      }
+
+      let planHtml = '';
+      if(planData){
+        planHtml = `
+          <div style="font-size:0.82rem; margin-top:8px;">
+            <div style="font-weight:700; margin-bottom:4px;">${nombrePlan}</div>
+            <div style="display:flex; justify-content:space-between;"><span>Reportado</span>${badgeSiNo_(planData.reportado)}</div>
+            <div style="display:flex; justify-content:space-between;"><span>Entregó</span>${badgeSiNo_(planData.entrego)}</div>
+            <div style="display:flex; justify-content:space-between;"><span>Presentó</span>${badgeSiNo_(planData.presento)}</div>
+            <div style="display:flex; justify-content:space-between;"><span>Aprobó</span>${badgeSiNo_(planData.aprobo)}</div>
+          </div>`;
+      }
+
+      // Espacio reservado para personalización visual por trimestre (a futuro, desde el Panel):
+      const fraseHtml = congelado && congelado.frase ? `<div class="frase-docente">${congelado.frase}</div>` : '';
+      const imagenHtml = congelado && congelado.imagenUrl ? `<img class="imagen-trimestre" src="${congelado.imagenUrl}" alt="">` : '';
+
+      // Detalle histórico de autoevaluación/coevaluación y asistencia de ESE trimestre
+      // (solo aparece en trimestres ya congelados, que sí guardan este detalle completo).
+      let detalleHtml = '';
+      if(congelado){
+        const filasDetalle = [];
+        if(typeof congelado.autoevaluacion === 'number') filasDetalle.push(['Autoevaluación', congelado.autoevaluacion.toFixed(1)]);
+        if(typeof congelado.coevaluacion === 'number') filasDetalle.push(['Coevaluación', congelado.coevaluacion.toFixed(1)]);
+        if(typeof congelado.clasesProgramadas === 'number') filasDetalle.push(['Clases programadas', congelado.clasesProgramadas]);
+        if(typeof congelado.clasesAsistidas === 'number') filasDetalle.push(['Clases asistidas', congelado.clasesAsistidas]);
+        if(typeof congelado.clasesExcusadas === 'number') filasDetalle.push(['Ausencias excusadas', congelado.clasesExcusadas]);
+        if(filasDetalle.length){
+          detalleHtml = `<div style="font-size:0.8rem; margin-top:8px; padding-top:8px; border-top:1px dashed #E3E1D8;">` +
+            filasDetalle.map(([et,val])=>`<div style="display:flex; justify-content:space-between;"><span>${et}</span><b>${val}</b></div>`).join('') +
+            `</div>`;
+        }
+      }
+
+      cont.innerHTML = `<h3>Trimestre ${numero} ${fechaHtml}</h3><div style="text-align:right; font-size:1.1rem; font-weight:700;">${notaHtml}</div>${planHtml}${detalleHtml}${fraseHtml}${imagenHtml}`;
+    }
+
+    let yaEncontroActivo = false;
+    for(const numero of [1,2,3]){
+      const congelado = b[`trimestre${numero}`];
+      const esElActivo = !congelado && !yaEncontroActivo;
+      if(esElActivo) yaEncontroActivo = true;
+      renderBloqueTrimestre_(numero, congelado, esElActivo);
     }
 
     // Fecha límite para presentar actividades pendientes — actualiza esta fecha cada periodo.
@@ -480,8 +527,7 @@
         <div class="taller-item"><span>Aprobó</span>${badgeSiNo(plan.aprobo)}</div>
       `;
     }
-    pintarPlan('planT1Txt', b.planMejoraT1);
-    pintarPlan('planSub2Txt', b.planMejoraSub2);
+    // (Plan de mejora T1/Sub2/Sub3 ahora se muestra fusionado dentro de renderBloqueTrimestre_, arriba)
   }
 
   const PLANTILLAS_MENSAJE = {
