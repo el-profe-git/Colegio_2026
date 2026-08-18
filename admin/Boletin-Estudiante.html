@@ -92,6 +92,7 @@
     <div class="card" id="tarjetaEstudiante">
       <div id="nombreTxt" style="font-size:1.1rem; font-weight:800;"></div>
       <div id="datosTxt" style="font-size:0.85rem; color:var(--slate);"></div>
+      <div id="competenciaTxt" class="hidden" style="font-size:0.85rem; margin-top:8px; padding-top:8px; border-top:1px dashed #E3E1D8;"></div>
     </div>
 
     <div class="alerta hidden" id="alertaMejora">
@@ -154,11 +155,10 @@
       <div id="avisoNotaExtrana" class="hidden" style="background:#FFF3CD; border:1.5px solid #C9971F; border-radius:8px; padding:10px; margin-top:10px; font-size:0.85rem; color:#7A5C00; text-align:center;">
         ⚠ Este valor no parece correcto. Por favor avísale a tu docente para que lo revise — no tomes esta cifra como tu nota real todavía.
       </div>
-    </div>
-
-    <div class="card hidden" id="cardObservacion">
-      <h2>📝 Observaciones del docente</h2>
-      <div id="observacionesBox" style="font-size:0.9rem; line-height:1.5;"></div>
+      <div id="cardObservacion" class="hidden" style="margin-top:14px; padding-top:12px; border-top:1.5px dashed #E3E1D8;">
+        <h2 style="font-size:0.95rem;">📝 Observaciones del docente</h2>
+        <div id="observacionesBox" style="font-size:0.9rem; line-height:1.5;"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -319,6 +319,17 @@
     document.getElementById('nombreTxt').textContent = b.nombre || '';
     document.getElementById('datosTxt').textContent = `TI ${b.ti} · Curso ${b.curso}`;
 
+    // Competencia a lograr del trimestre activo (el primero que aún no está congelado).
+    // Viene de la hoja COMPETENCIAS del Excel, un solo texto por grado.
+    const numeroTrimestreActivo = [1,2,3].find(n => !b[`trimestre${n}`]) || 3;
+    const competenciaTxt = document.getElementById('competenciaTxt');
+    if(b.competenciaALograr){
+      competenciaTxt.classList.remove('hidden');
+      competenciaTxt.innerHTML = `<b>Competencia a lograr — Trimestre ${numeroTrimestreActivo}:</b> ${b.competenciaALograr}`;
+    }else{
+      competenciaTxt.classList.add('hidden');
+    }
+
     // ============================================================
     // BLOQUE VISUAL POR TRIMESTRE (fusionado: nota + fecha + plan de mejora)
     // Separado del resto a propósito — aquí es donde se agregaría a futuro
@@ -405,6 +416,10 @@
       let celdaNota, celdaAporte;
       const celdaAciertos = (n.aciertos!==undefined && n.aciertos!==null) ? n.aciertos : '—';
       const celdaTiempo = (n.tiempo!==undefined && n.tiempo!==null) ? n.tiempo+' min' : '—';
+      const link = (window.LINKS_ACTIVIDADES||{})[n.actividad];
+      const nombreActividadHtml = link
+        ? `<a href="${link}" target="_blank">${n.actividad||''}</a>`
+        : (n.actividad||'');
       if(typeof n.nota === 'number'){
         suma+=n.nota; cuenta++;
         const malaNota = n.nota < 3.4;
@@ -412,12 +427,10 @@
         const aporte = totalActividades ? (n.nota * 0.70 / totalActividades) : 0;
         celdaAporte = aporte.toFixed(2);
       }else{
-        const link = (window.LINKS_ACTIVIDADES||{})[n.actividad];
-        celdaNota = `<span class="aviso-pendiente">Debe presentar la actividad antes del ${FECHA_LIMITE_TXT}</span>`
-          + (link ? `<br><a href="${link}" target="_blank" style="font-size:0.78rem;">➡ Ir a presentarla</a>` : '');
+        celdaNota = `<span class="aviso-pendiente">Debe presentar la actividad antes del ${FECHA_LIMITE_TXT}</span>`;
         celdaAporte = '—';
       }
-      tr.innerHTML = `<td>${n.actividad||''}</td><td style="text-align:right;">${celdaAciertos}</td><td style="text-align:right;">${celdaTiempo}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
+      tr.innerHTML = `<td>${nombreActividadHtml}</td><td style="text-align:right;">${celdaAciertos}</td><td style="text-align:right;">${celdaTiempo}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
       tablaBody.appendChild(tr);
     });
     document.getElementById('promHetero').textContent = cuenta ? (suma/cuenta).toFixed(2) : '—';
@@ -517,16 +530,6 @@
     });
     if(!talleresDiv.children.length) talleresDiv.innerHTML = '<div style="color:var(--slate); font-size:0.85rem;">Sin proceso formativo registrado.</div>';
 
-    function pintarPlan(divId, plan){
-      const div = document.getElementById(divId);
-      if(!plan){ div.innerHTML = '<div style="color:var(--slate); font-size:0.85rem;">Sin información registrada.</div>'; return; }
-      div.innerHTML = `
-        <div class="taller-item"><span>Reportado</span>${badgeSiNo(plan.reportado)}</div>
-        <div class="taller-item"><span>Asistió</span>${badgeSiNo(plan.asistio)}</div>
-        <div class="taller-item"><span>Entregó</span>${badgeSiNo(plan.entrego)}</div>
-        <div class="taller-item"><span>Aprobó</span>${badgeSiNo(plan.aprobo)}</div>
-      `;
-    }
     // (Plan de mejora T1/Sub2/Sub3 ahora se muestra fusionado dentro de renderBloqueTrimestre_, arriba)
   }
 

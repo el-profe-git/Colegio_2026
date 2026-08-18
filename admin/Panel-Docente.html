@@ -455,6 +455,22 @@
     const maxRow = range.e.r+1;
     const avisos = [];
 
+    // Competencia lograda: viene de la hoja "COMPETENCIAS" (un solo texto por grado),
+    // no por estudiante — se le asigna igual a todos los del mismo grado.
+    const GRADO_POR_CURSO = { '602':'Sexto', '603':'Sexto', '1001':'Décimo', '1002':'Décimo', '1003':'Décimo' };
+    let competenciaDelGrado = '';
+    const gradoDeEstaHoja = GRADO_POR_CURSO[nombreHoja];
+    const wsComp = wb.Sheets['COMPETENCIAS'];
+    if(wsComp && gradoDeEstaHoja){
+      const rangeComp = XLSX.utils.decode_range(wsComp['!ref']);
+      for(let f=1; f<=rangeComp.e.r+1; f++){
+        if(limpiarTxt_(celdaXLSX_(wsComp,f,1)) === limpiarTxt_(gradoDeEstaHoja).toUpperCase()){
+          competenciaDelGrado = celdaXLSX_(wsComp,f,2) || '';
+          break;
+        }
+      }
+    }
+
     let filaTI=null, colTI=null;
     for(let f=1; f<=6 && !filaTI; f++){
       for(let c=1; c<=3; c++){
@@ -570,6 +586,7 @@
         clasesProgramadas: leerNotaCol('BB'),
         clasesAsistidas: leerNotaCol('BC'),
         clasesExcusadas: leerNotaCol('BD'),
+        competenciaALograr: competenciaDelGrado,
         actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
       };
       if(typeof autoevalExcel === 'number') datosEstudiante.autoevaluacion = autoevalExcel;
@@ -777,7 +794,8 @@
             observacionGeneral: b.observacionGeneral || null,
             clasesProgramadas: (typeof b.clasesProgramadas === 'number') ? b.clasesProgramadas : null,
             clasesAsistidas: (typeof b.clasesAsistidas === 'number') ? b.clasesAsistidas : null,
-            clasesExcusadas: (typeof b.clasesExcusadas === 'number') ? b.clasesExcusadas : null
+            clasesExcusadas: (typeof b.clasesExcusadas === 'number') ? b.clasesExcusadas : null,
+            competenciaALograr: b.competenciaALograr || null
           },
           notas: [], notaDefinitiva: firebase.firestore.FieldValue.delete(),
           autoevaluacion: firebase.firestore.FieldValue.delete(), coevaluacion: firebase.firestore.FieldValue.delete(),
