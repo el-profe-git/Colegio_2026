@@ -1,0 +1,78 @@
+/* ============================================================
+   TEMA VISUAL — TALLERES Y ACTIVIDADES INTERACTIVAS
+   Identidad para estudiantes: cercana, motivadora, con energía —
+   sin perder claridad (siguen siendo evaluaciones reales).
+   Misma base de marca que el tema institucional, con más calidez.
+   ============================================================ */
+
+:root{
+  --paper: #FBFAF5;
+  --ink: #1B2B29;
+  --slate: #5B6B72;
+  --accent: #2F7A6F;
+  --accent-dark: #1D4E47;
+  --sello: #D9A441;       /* dorado del logo de Leo — para aciertos y celebraciones */
+  --acierto: #DFF0E4;
+  --acierto-ink: #1E6B3A;
+  --error: #B3452C;
+  --card-bg: #FFFFFF;
+  --card-border: #1B2B29;
+
+  /* Tipografía — sans redondeada para títulos (amigable), misma sans de siempre para el resto */
+  --fuente-titulo: "Nunito", "Segoe UI Rounded", -apple-system, sans-serif;
+  --fuente-datos: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  --radio-borde: 14px; /* mas redondeado que el institucional -- se siente mas amigable */
+}
+
+body{
+  font-family: var(--fuente-datos);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.card{
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: var(--radio-borde);
+}
+
+.card h2, h1{
+  font-family: var(--fuente-titulo);
+  font-weight: 800;
+}
+
+.btn{
+  background: var(--ink);
+  color: #fff;
+  border-radius: 12px;
+  font-weight: 700;
+  font-family: var(--fuente-titulo);
+}
+.btn.secondary{ background: var(--accent); }
+
+.opcion-btn.elegida{
+  background: var(--accent);
+  border-color: var(--accent-dark);
+}
+.opcion-btn.correcta{ background: var(--acierto); border-color: var(--acierto-ink); color: var(--acierto-ink); }
+.opcion-btn.incorrecta{ background: #FCE4E4; border-color: var(--error); color: var(--error); }
+
+.nota-grande{
+  font-family: var(--fuente-titulo);
+  font-weight: 800;
+  color: var(--accent-dark);
+}
+
+/* ============================================================
+   Espacio reservado para la mascota Leo (animación en desarrollo).
+   Cuando esté lista, se inserta el elemento animado dentro de este
+   contenedor -- ya tiene tamaño y posición pensados, sin necesidad
+   de tocar el resto del taller.
+   Uso en HTML: <div class="zona-mascota"></div>
+   ============================================================ */
+.zona-mascota{
+  width: 64px; height: 64px;
+  margin: 0 auto 12px auto;
+  /* placeholder mientras se integra la animación real */
+}

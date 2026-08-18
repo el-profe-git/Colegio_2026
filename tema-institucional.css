@@ -1,0 +1,82 @@
+/* ============================================================
+   TEMA VISUAL — PANEL DEL DOCENTE Y BOLETÍN DEL ESTUDIANTE
+   Identidad institucional: se siente como un documento oficial —
+   confiable, serio, pero cálido (educación, no corporativo frío).
+   ============================================================ */
+
+:root{
+  /* Paleta — fondo con matiz frío casi imperceptible (no el crema cálido genérico) */
+  --paper: #F7F8F6;
+  --ink: #1B2B29;
+  --slate: #5B6B72;
+  --accent: #2F7A6F;
+  --accent-dark: #1D4E47;
+  --sello: #D9A441;   /* dorado del logo de Leo — reservado para momentos importantes (nota definitiva, RECUPERÓ) */
+  --warn: #C9971F;
+  --bad: #B3452C;
+  --card-bg: #FFFFFF;
+  --card-border: #1B2B29;
+
+  /* Tipografía — serif con carácter para títulos (evoca un documento/certificado real),
+     sans limpia para datos y tablas (legibilidad ante todo en números) */
+  --fuente-titulo: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --fuente-datos: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  --radio-borde: 8px;
+}
+
+body{
+  font-family: var(--fuente-datos);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.card{
+  background: var(--card-bg);
+  border: 1.5px solid #E2E6E3;
+  border-radius: var(--radio-borde);
+  box-shadow: 0 1px 2px rgba(27,43,41,0.04);
+}
+
+/* Elemento distintivo: línea doble bajo cada título, como un sello de documento oficial */
+.card h2{
+  font-family: var(--fuente-titulo);
+  font-weight: 600;
+  color: var(--accent-dark);
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--card-border);
+  position: relative;
+}
+.card h2::after{
+  content: "";
+  position: absolute;
+  bottom: -4px; left: 0;
+  width: 48px; height: 1px;
+  background: var(--card-border);
+}
+
+.btn{
+  background: var(--ink);
+  color: #fff;
+  border-radius: 6px;
+  font-weight: 600;
+  font-family: var(--fuente-datos);
+}
+.btn.secondary{ background: var(--accent); }
+.btn.warn{ background: var(--bad); }
+
+.nota-grande{
+  font-family: var(--fuente-titulo);
+  color: var(--accent-dark);
+}
+
+.badge-recupero{
+  background: #FCEED3;
+  color: #7A5200;
+  border: 1px solid var(--sello);
+  animation: recuperoAparece 0.3s ease-out;
+}
+@keyframes recuperoAparece{ from{ opacity:0; transform:scale(0.85); } to{ opacity:1; transform:scale(1); } }
+
+.logo-sistema{ height: 36px; }
