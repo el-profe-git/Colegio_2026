@@ -1,48 +1,83 @@
 /* ============================================================
-   CALENDARIO ACADÉMICO — un solo lugar para el horario, las
-   fechas de cada trimestre, y los festivos.
+   CALENDARIO ACADÉMICO — Colegio Compartir Suba (IED), Bogotá D.C.
+   Calendario A, Secretaría de Educación del Distrito (SED).
    El Panel lee este archivo para generar SOLO las fechas reales
    de clase de cada curso (día correcto, dentro del trimestre,
    sin contar festivos) — nunca hay que escribir fechas a mano.
-
-   CÓMO LLENARLO: reemplaza los valores de ejemplo por los reales
-   de tu colegio. Los días de la semana se escriben en español,
-   con mayúscula inicial: Lunes, Martes, Miércoles, Jueves,
-   Viernes, Sábado.
    ============================================================ */
 
 window.CALENDARIO_ACADEMICO = {
 
-  // Fecha de inicio y fin de cada trimestre (formato AAAA-MM-DD)
+  // Fechas de corte de cada trimestre, confirmadas por el docente (SIEE institucional).
   trimestres: {
-    1: { inicio: "2026-01-20", fin: "2026-04-10" },   // EJEMPLO — reemplaza por las reales
-    2: { inicio: "2026-04-20", fin: "2026-07-17" },   // EJEMPLO
-    3: { inicio: "2026-07-27", fin: "2026-11-13" }    // EJEMPLO
+    1: { inicio: "2026-01-13", fin: "2026-05-15" },
+    2: { inicio: "2026-05-19", fin: "2026-08-21" },
+    3: { inicio: "2026-08-25", fin: "2026-11-30" }
   },
 
-  // Festivos y días no laborales — aplican a TODOS los cursos por igual.
-  // Agrega uno por línea, en formato AAAA-MM-DD.
+  // Festivos nacionales de Colombia 2026 (aplican en todo el país, incluye traslados
+  // por la Ley Emiliani) + Semana de Receso Estudiantil de Bogotá (5-12 oct 2026).
   festivos: [
-    "2026-05-01",   // EJEMPLO: Día del Trabajo
-    "2026-07-20",   // EJEMPLO: Día de la Independencia
-    "2026-08-07"    // EJEMPLO: Batalla de Boyacá
+    "2026-01-01",  // Año Nuevo
+    "2026-01-12",  // Reyes Magos
+    "2026-03-23",  // San José
+    "2026-03-30",  // Semana Santa inicio receso estudiantil
+    "2026-03-31",  //
+    "2026-04-01",  // 
+    "2026-04-02",  // 
+    "2026-04-03",  // Semana Santa fin receso estudiantil
+    "2026-05-01",  // Día del Trabajo
+    "2026-05-18",  // Ascensión
+    "2026-06-08",  // Corpus Christi
+    "2026-06-15",  // Sagrado Corazón
+    "2026-06-22",  // Inicio receso estudiantil mitad de año
+    "2026-06-23",  //
+    "2026-06-24",  //
+    "2026-06-25",  //
+    "2026-06-26",  //
+    "2026-06-29",  // 
+    "2026-06-30",  //
+    "2026-07-01",  //
+    "2026-07-02",  //
+    "2026-07-03",  //
+    "2026-07-06",  // Fin receso estudiantil mitad de año
+    "2026-07-13",  // Virgen de Chiquinquirá (nuevo festivo desde 2026)
+    "2026-07-20",  // Independencia de Colombia
+    "2026-08-07",  // Batalla de Boyacá
+    "2026-08-17",  // Asunción de la Virgen
+    "2026-10-05",  // Semana de Receso Estudiantil (Bogotá) - inicio
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-08",
+    "2026-10-09",  // Semana de Receso Estudiantil (Bogotá) - fin
+    "2026-10-12",  // Día de la Raza
+    "2026-11-02",  // Todos los Santos
+    "2026-11-16",  // Independencia de Cartagena
+    "2026-12-08",  // Inmaculada Concepción
+    "2026-12-25"   // Navidad
   ],
 
-  // Horario de cada curso: en qué día(s) de la semana hay clase de tu materia.
-  // Si un curso tiene más de un día a la semana, se listan los dos.
+  // Horario real: en qué día(s) de la semana hay clase de la materia en cada curso.
+  // "bloques" es informativo (cuántos bloques de clase tiene ese día) — no afecta el
+  // cálculo de fechas, solo queda documentado por si se necesita más adelante.
   horarios: {
-    "602":  { dias: ["Lunes", "Miércoles"] },   // EJEMPLO
-    "603":  { dias: ["Martes", "Jueves"] },     // EJEMPLO
-    "1001": { dias: ["Martes"] },               // EJEMPLO
-    "1002": { dias: ["Miércoles"] },            // EJEMPLO
-    "1003": { dias: ["Jueves"] }                // EJEMPLO
+    "602":  { dias: ["Lunes", "Martes", "Jueves"],
+              bloques: { "Lunes": 2, "Martes": 1, "Jueves": 2 } },
+    "603":  { dias: ["Lunes", "Miércoles", "Viernes"],
+              bloques: { "Lunes": 1, "Miércoles": 2, "Viernes": 2 } },
+    "1001": { dias: ["Lunes", "Miércoles", "Viernes"],
+              bloques: { "Lunes": 1, "Miércoles": 1, "Viernes": 2 } },
+    "1002": { dias: ["Lunes", "Jueves", "Viernes"],
+              bloques: { "Lunes": 1, "Jueves": 2, "Viernes": 1 } },
+    "1003": { dias: ["Martes", "Miércoles", "Jueves"],
+              bloques: { "Martes": 2, "Miércoles": 1, "Jueves": 1 } }
   },
 
   // Docentes y qué materia/curso dictan — dato NO sensible (nombres de adultos, no de
   // menores), por eso es seguro tenerlo aquí. NUNCA agregues estudiantes a este archivo.
   docentes: {
     "docente-ejemplo@correo.edu.co": {
-      nombre: "Nombre Ejemplo",
+      nombre: "Leo te explica",
       asignaciones: [
         { materia: "Matemáticas", cursos: ["602", "603"] },
         { materia: "Física", cursos: ["1001", "1002", "1003"] }
