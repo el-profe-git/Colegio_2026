@@ -69,8 +69,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="https://el-profe-git.github.io/Colegio_2026/config-compartida.js"></script>
-<script src="https://el-profe-git.github.io/Colegio_2026/calendario-academico.js"></script>
+<script src="../config-compartida.js"></script>
+<script src="../config-columnas-excel.js"></script>
+<script src="../calendario-academico.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -244,7 +245,8 @@
       <div style="font-size:0.72rem; color:var(--slate); margin-bottom:8px;">
         ⚠ Las fechas se calculan solas desde <code>calendario-academico.js</code> (horario + trimestre + festivos)
         — mientras ese archivo tenga los valores de EJEMPLO, las fechas mostradas también serán de ejemplo.
-        Marca <b>F</b> = falla, <b>E</b> = falla excusada. Vacío = asistió. Cada celda se guarda sola al salir de ella.
+        Vacío = asistió. <b>F</b>/<b>X</b> = falla. <b>E</b> = falla excusada. <b>R</b> = asistió con retardo.
+        <b>NC</b> = no hubo clase (no cuenta). Cada celda se guarda sola al salir de ella.
       </div>
       <div class="fila">
         <select id="filtroCursoAsistencia">
@@ -508,51 +510,89 @@
     const maxRow = range.e.r+1;
     const avisos = [];
 
-    // Competencia lograda: viene de la hoja "COMPETENCIAS" (un solo texto por grado),
-    // no por estudiante — se le asigna igual a todos los del mismo grado.
+    // Todas las columnas se leen del configurador externo (config-columnas-excel.js) —
+    // si algún día cambian en tu Excel, se corrige ahí, nunca aquí.
+    const CFG = window.COLUMNAS_EXCEL_NOTAS || {};
+    if(!window.COLUMNAS_EXCEL_NOTAS){
+      avisos.push('⚠ No se encontró config-columnas-excel.js — usando columnas por defecto. Verifica que el archivo esté cargado.');
+    }
+    const COL = s => column_index_from_string_(s);
+    function letraMasOffset_(letraBase, offset){
+      return XLSX.utils.encode_col(COL(letraBase) - 1 + offset);
+    }
+
+    // Competencia lograda: viene de la hoja de competencias, con los 4 niveles
+    // (Superior/Alto/Básico/Bajo) en un solo texto — se extrae solo el nivel que
+    // le corresponde a CADA estudiante según su propia Nota Definitiva.
     const GRADO_POR_CURSO = { '602':'Sexto', '603':'Sexto', '1001':'Décimo', '1002':'Décimo', '1003':'Décimo' };
-    let competenciaDelGrado = '';
+    let textoCompetenciaCompleto = '';
     const gradoDeEstaHoja = GRADO_POR_CURSO[nombreHoja];
-    const wsComp = wb.Sheets['COMPETENCIAS'];
+    const nombreHojaComp = CFG.hojaCompetencias || 'COMPETENCIAS';
+    const wsComp = wb.Sheets[nombreHojaComp];
     if(wsComp && gradoDeEstaHoja){
       const rangeComp = XLSX.utils.decode_range(wsComp['!ref']);
+      const colGradoComp = COL(CFG.columnaCompetenciaGrado || 'A');
+      const colTextoComp = COL(CFG.columnaCompetenciaTextoNiveles || 'C');
       for(let f=1; f<=rangeComp.e.r+1; f++){
-        if(limpiarTxt_(celdaXLSX_(wsComp,f,1)) === limpiarTxt_(gradoDeEstaHoja).toUpperCase()){
-          competenciaDelGrado = celdaXLSX_(wsComp,f,2) || '';
+        if(limpiarTxt_(celdaXLSX_(wsComp,f,colGradoComp)) === limpiarTxt_(gradoDeEstaHoja).toUpperCase()){
+          textoCompetenciaCompleto = celdaXLSX_(wsComp,f,colTextoComp) || '';
           break;
         }
       }
     }
+    // Extrae SOLO el texto del nivel indicado (ej. "ALTO") de dentro del texto completo
+    // con los 4 niveles concatenados uno detrás del otro.
+    function extraerNivelDeCompetencia_(textoCompleto, nivel){
+      if(!textoCompleto) return '';
+      const patronTodos = /(SUPERIOR|ALTO|B[ÁA]SICO|BAJO)\s*:/gi;
+      const partes = [];
+      let match; let posiciones = [];
+      while((match = patronTodos.exec(textoCompleto)) !== null){
+        posiciones.push({ nivelEncontrado: match[1].toUpperCase().replace('Á','A'), inicio: match.index, finEtiqueta: patronTodos.lastIndex });
+      }
+      for(let i=0;i<posiciones.length;i++){
+        if(posiciones[i].nivelEncontrado === nivel){
+          const inicioTexto = posiciones[i].finEtiqueta;
+          const finTexto = (i+1<posiciones.length) ? posiciones[i+1].inicio : textoCompleto.length;
+          return textoCompleto.slice(inicioTexto, finTexto).trim();
+        }
+      }
+      return textoCompleto; // si no se pudo separar por niveles, se devuelve todo el texto tal cual (respaldo)
+    }
+    function nivelSegunNota_(nota){
+      const rangos = CFG.rangosNivelCompetencia || [];
+      for(const r of rangos){ if(nota >= r.min && nota <= r.max) return r.nivel; }
+      return null;
+    }
 
     let filaTI=null, colTI=null;
+    const colTIBuscar = COL(CFG.columnaTI || 'A');
     for(let f=1; f<=6 && !filaTI; f++){
-      for(let c=1; c<=3; c++){
-        if(limpiarTxt_(celdaXLSX_(ws,f,c))==='TI'){ filaTI=f; colTI=c; break; }
-      }
+      if(limpiarTxt_(celdaXLSX_(ws,f,colTIBuscar))==='TI'){ filaTI=f; colTI=colTIBuscar; }
     }
     if(!filaTI){ avisos.push(`Hoja ${nombreHoja}: no encontré la columna "TI", se omite esta hoja.`); return { estudiantes: [], avisos }; }
-    const colEmail = colTI+1, colNombre = colTI+2;
+    const colEmail = COL(CFG.columnaEmail || 'B'), colNombre = COL(CFG.columnaNombre || 'C');
     const filaDatosInicio = filaTI+1;
 
-    // Estructura fija confirmada, igual en las 5 hojas (602, 603, 1001, 1002, 1003):
-    // Nota1=F, Nota2=M, Nota3=T, Nota4=AA · Plan T1=AF-AK · Plan Subcomisión II=AM-AP ·
-    // Evaluación final=AU-AW · Observaciones=AX-BA · Asistencia=BB-BD
-    const COL = s => column_index_from_string_(s);
-    function tituloBloque_(colTituloLetra, colNotaLetra, prefijoRegex, generico){
+    function tituloBloque_(colTituloLetra, prefijoRegex){
       const colTitulo = COL(colTituloLetra);
       const titulo = celdaXLSX_(ws,1,colTitulo);
       const limpio = titulo ? String(titulo).replace(prefijoRegex,'').trim() : '';
       return limpio || null; // null = este bloque no tiene tema asignado, no cuenta como actividad real
     }
-    const nombreNota1 = tituloBloque_('D','F', /^NOTA\s*1:?\s*/i, null);
-    const nombreNota2 = tituloBloque_('K','M', /^NOTA\s*2:?\s*/i, null);
-    const nombreNota3 = tituloBloque_('R','T', /^NOTA\s*3:?\s*/i, null);
-    const nombreNota4 = tituloBloque_('Y','AA', /^NOTA\s*4:?\s*/i, null);
+    const LETRA_NOTA = {
+      1: CFG.columnaInicioNota1 || 'D', 2: CFG.columnaInicioNota2 || 'K',
+      3: CFG.columnaInicioNota3 || 'R', 4: CFG.columnaInicioNota4 || 'Y'
+    };
+    const nombreNota1 = tituloBloque_(LETRA_NOTA[1], /^NOTA\s*1:?\s*/i);
+    const nombreNota2 = tituloBloque_(LETRA_NOTA[2], /^NOTA\s*2:?\s*/i);
+    const nombreNota3 = tituloBloque_(LETRA_NOTA[3], /^NOTA\s*3:?\s*/i);
+    const nombreNota4 = tituloBloque_(LETRA_NOTA[4], /^NOTA\s*4:?\s*/i);
 
-    // Cada bloque de nota trae 3 columnas de "proceso" después de tiempo (ej. Nota1 = Taller
-    // 1/2/3; Nota2 = Actividad en clase, Trabajo en clase; Nota3 = Apuntes de clase, etc.) —
-    // se leen genéricamente por su propio título de columna (fila 3), sin asumir nombres fijos.
-    function leerProceso_(colInicioProceso){
+    // Cada bloque de nota trae 3 columnas de "proceso" después de tiempo (offset +4 desde
+    // el inicio del bloque) — se leen genéricamente por su propio título de columna (fila 3).
+    function leerProceso_(letraInicioBloque){
+      const colInicioProceso = COL(letraInicioBloque) + 4;
       const etiquetas = [];
       for(let i=0;i<3;i++){
         const col = colInicioProceso + i;
@@ -562,10 +602,10 @@
       return etiquetas;
     }
     const FILA_CAMPOS_GLOBAL = 3;
-    const procesoNota1 = nombreNota1 ? leerProceso_(COL('H')) : [];
-    const procesoNota2 = nombreNota2 ? leerProceso_(COL('O')) : [];
-    const procesoNota3 = nombreNota3 ? leerProceso_(COL('V')) : [];
-    const procesoNota4 = nombreNota4 ? leerProceso_(COL('AC')) : [];
+    const procesoNota1 = nombreNota1 ? leerProceso_(LETRA_NOTA[1]) : [];
+    const procesoNota2 = nombreNota2 ? leerProceso_(LETRA_NOTA[2]) : [];
+    const procesoNota3 = nombreNota3 ? leerProceso_(LETRA_NOTA[3]) : [];
+    const procesoNota4 = nombreNota4 ? leerProceso_(LETRA_NOTA[4]) : [];
 
     const estudiantes = [];
     for(let f=filaDatosInicio; f<=maxRow; f++){
@@ -577,11 +617,24 @@
         .map(e => ({ etiqueta: e.etiqueta, valor: celdaXLSX_(ws, f, e.col) }))
         .filter(p => p.valor !== null && p.valor !== undefined && String(p.valor).trim()!=='');
 
+      // Dentro de cada bloque de nota: version=+0, aciertos=+1, nota=+2, tiempo=+3 (desde
+      // la letra de inicio de ese bloque, configurable arriba).
+      function leerBloqueNota_(nombreNota, letraInicio, proceso){
+        if(!nombreNota) return null;
+        return {
+          actividad: nombreNota,
+          version: leerCol(letraMasOffset_(letraInicio,0)),
+          aciertos: leerNotaCol(letraMasOffset_(letraInicio,1)),
+          nota: leerNotaCol(letraMasOffset_(letraInicio,2)),
+          tiempo: leerNotaCol(letraMasOffset_(letraInicio,3)),
+          proceso: leerProcesoDatos_(proceso)
+        };
+      }
       const notasCrudas = [
-        nombreNota1 ? {actividad:nombreNota1, version:leerCol('D'), nota:leerNotaCol('F'), aciertos:leerNotaCol('E'), tiempo:leerNotaCol('G'), proceso:leerProcesoDatos_(procesoNota1)} : null,
-        nombreNota2 ? {actividad:nombreNota2, version:leerCol('K'), nota:leerNotaCol('M'), aciertos:leerNotaCol('L'), tiempo:leerNotaCol('N'), proceso:leerProcesoDatos_(procesoNota2)} : null,
-        nombreNota3 ? {actividad:nombreNota3, version:leerCol('R'), nota:leerNotaCol('T'), aciertos:leerNotaCol('S'), tiempo:leerNotaCol('U'), proceso:leerProcesoDatos_(procesoNota3)} : null,
-        nombreNota4 ? {actividad:nombreNota4, version:leerCol('Y'), nota:leerNotaCol('AA'), aciertos:leerNotaCol('Z'), tiempo:leerNotaCol('AB'), proceso:leerProcesoDatos_(procesoNota4)} : null,
+        leerBloqueNota_(nombreNota1, LETRA_NOTA[1], procesoNota1),
+        leerBloqueNota_(nombreNota2, LETRA_NOTA[2], procesoNota2),
+        leerBloqueNota_(nombreNota3, LETRA_NOTA[3], procesoNota3),
+        leerBloqueNota_(nombreNota4, LETRA_NOTA[4], procesoNota4),
       ].filter(n=>n!==null);
       notasCrudas.forEach(n=>{
         if(n.nota!==null && n.nota!==undefined && typeof n.nota !== 'number'){
@@ -589,19 +642,19 @@
         }
       });
 
-      // Trimestre 1: si aprobó su plan de mejora, la nota de Nota1 queda en 3.4 (el mínimo
-      // aprobatorio), sin importar cuál haya sido la nota original más baja.
-      const aproboT1 = String(leerCol('AI')||'').trim().toUpperCase(); // AI = APROBO (plan T1)
+      // Plan de Mejora Trimestre 1: reportado=+0,entrego=+1,presento=+2,aprobo=+3,notaPlan=+4,notaT1=+5
+      const letraPlanT1 = CFG.columnaInicioPlanMejoraT1 || 'AF';
+      const aproboT1 = String(leerCol(letraMasOffset_(letraPlanT1,3))||'').trim().toUpperCase();
       const t1Corregido = (aproboT1==='SI' || aproboT1==='SÍ');
-      const notaTrimestre1Original = leerNotaCol('AK'); // AK = NOTA TRIMESTRE 1, tal como quedó antes del plan de mejora
+      const notaTrimestre1Original = leerNotaCol(letraMasOffset_(letraPlanT1,5));
       let notaTrimestre1 = notaTrimestre1Original;
       if(t1Corregido) notaTrimestre1 = 3.4;
 
       // Autoevaluación/Coevaluación: el estudiante las escribe SOLO desde el taller de
       // autoevaluación (nunca desde esta planilla) — si la celda está vacía, NO se incluye
       // en lo que se sube, para no borrar por accidente lo que el estudiante ya respondió.
-      const autoevalExcel = leerNotaCol('AU');
-      const coevalExcel = leerNotaCol('AV');
+      const autoevalExcel = leerNotaCol(CFG.columnaAutoevaluacion || 'AU');
+      const coevalExcel = leerNotaCol(CFG.columnaCoevaluacion || 'AV');
 
       // Nota Definitiva: la CALCULAMOS nosotros mismos (no confiamos en la fórmula del Excel,
       // porque si el docente no recalculó antes de guardar, SheetJS lee la celda vacía y
@@ -620,26 +673,42 @@
         notaDefinitivaCalculada = Math.round((promedioHetero*0.7 + autoevalParaCalculo*0.2 + coevalParaCalculo*0.1)*10)/10;
       }
 
+      // El nivel de competencia (Superior/Alto/Básico/Bajo) depende de la Nota Definitiva
+      // de ESTE estudiante — dos estudiantes del mismo curso pueden tener redacciones
+      // distintas si su desempeño fue distinto.
+      let competenciaDeEsteEstudiante = '';
+      if(typeof notaDefinitivaCalculada === 'number' && textoCompetenciaCompleto){
+        const nivel = nivelSegunNota_(notaDefinitivaCalculada);
+        competenciaDeEsteEstudiante = nivel ? extraerNivelDeCompetencia_(textoCompetenciaCompleto, nivel) : textoCompetenciaCompleto;
+      }
+
+      const letraPlanSub = CFG.columnaInicioPlanMejoraSubcomision || 'AM';
       const datosEstudiante = {
         ti: String(ti), correo: (celdaXLSX_(ws,f,colEmail)||'').toString().trim().toLowerCase(),
         nombre: celdaXLSX_(ws,f,colNombre), curso: nombreHoja,
         materia: (nombreHoja==='602'||nombreHoja==='603') ? 'Matemáticas' : 'Física',
         notas: notasCrudas,
         trimestre1: { nota: notaTrimestre1, notaAnterior: (t1Corregido ? notaTrimestre1Original : null), corregido: t1Corregido },
-        planMejoraT1: { reportado: leerCol('AF'), entrego: leerCol('AG'), presento: leerCol('AH'), aprobo: leerCol('AI') },
-        // Estas columnas del Excel (AM-AP) se REUTILIZAN igual cada trimestre — representan
+        planMejoraT1: {
+          reportado: leerCol(letraMasOffset_(letraPlanT1,0)), entrego: leerCol(letraMasOffset_(letraPlanT1,1)),
+          presento: leerCol(letraMasOffset_(letraPlanT1,2)), aprobo: leerCol(letraMasOffset_(letraPlanT1,3))
+        },
+        // Estas columnas del Excel se REUTILIZAN igual cada trimestre — representan
         // "el plan de mejora del trimestre que esté activo ahora" (Subcomisión II en T2,
         // Subcomisión III en T3, etc.), por eso el nombre interno es genérico, no fijo a T2.
-        planMejoraSubcomisionActual: { reportado: leerCol('AM'), entrego: leerCol('AN'), presento: leerCol('AO'), aprobo: leerCol('AP') },
+        planMejoraSubcomisionActual: {
+          reportado: leerCol(letraMasOffset_(letraPlanSub,0)), entrego: leerCol(letraMasOffset_(letraPlanSub,1)),
+          presento: leerCol(letraMasOffset_(letraPlanSub,2)), aprobo: leerCol(letraMasOffset_(letraPlanSub,3))
+        },
         notaDefinitiva: notaDefinitivaCalculada,
-        observacionCognitiva: leerCol('AX'),
-        observacionProcedimental: leerCol('AY'),
-        observacionActitudinal: leerCol('AZ'),
-        observacionGeneral: leerCol('BA'),
-        clasesProgramadas: leerNotaCol('BB'),
-        clasesAsistidas: leerNotaCol('BC'),
-        clasesExcusadas: leerNotaCol('BD'),
-        competenciaALograr: competenciaDelGrado,
+        observacionCognitiva: leerCol(CFG.columnaObservacionCognitiva || 'AX'),
+        observacionProcedimental: leerCol(CFG.columnaObservacionProcedimental || 'AY'),
+        observacionActitudinal: leerCol(CFG.columnaObservacionActitudinal || 'AZ'),
+        observacionGeneral: leerCol(CFG.columnaObservacionGeneral || 'BA'),
+        clasesProgramadas: leerNotaCol(CFG.columnaClasesProgramadas || 'BB'),
+        clasesAsistidas: leerNotaCol(CFG.columnaClasesAsistidas || 'BC'),
+        clasesExcusadas: leerNotaCol(CFG.columnaClasesExcusadas || 'BD'),
+        competenciaALograr: competenciaDeEsteEstudiante,
         actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
       };
       if(typeof autoevalExcel === 'number') datosEstudiante.autoevaluacion = autoevalExcel;
@@ -1521,12 +1590,14 @@
         fechas.forEach(f=>{
           const td = document.createElement('td');
           const input = document.createElement('input');
-          input.type = 'text'; input.maxLength = 1;
+          input.type = 'text'; input.maxLength = 2;
           input.value = asistenciaGuardada[f] || '';
-          input.style.cssText = 'width:28px; text-align:center; font-size:0.8rem; padding:2px;';
+          input.style.cssText = 'width:34px; text-align:center; font-size:0.75rem; padding:2px;';
           input.addEventListener('blur', async ()=>{
             let v = input.value.trim().toUpperCase();
-            if(v !== 'F' && v !== 'E' && v !== ''){ input.value = ''; v=''; }
+            const codigosValidos = ['F','E','X','R','NC'];
+            if(v.length<=2) v = v.toUpperCase();
+            if(!codigosValidos.includes(v) && v !== ''){ input.value = ''; v=''; }
             else{ input.value = v; }
             const campo = `asistenciaDiaria.${f}`;
             try{
@@ -1564,24 +1635,80 @@
       const buffer = await archivo.arrayBuffer();
       const wb = XLSX.read(buffer, {type:'array'});
       const lineas = [];
+      const discrepancias = [];
       let totalActualizados = 0;
+      const CFG_ASIS = window.COLUMNAS_EXCEL_ASISTENCIA || {};
+      if(!window.COLUMNAS_EXCEL_ASISTENCIA){
+        lineas.push('⚠ No se encontró config-columnas-excel.js — usando valores por defecto.');
+      }
+      const cal = window.CALENDARIO_ACADEMICO;
+      if(!cal || !cal.trimestres){
+        reporte.textContent = '⚠ No se encontró calendario-academico.js con las fechas de trimestre — no se puede calcular a qué trimestre pertenece cada fecha. Revisa que esté cargado.';
+        return;
+      }
+      function trimestreDeFecha_(fechaISO){
+        for(const num of [1,2,3]){
+          const t = cal.trimestres[num];
+          if(t && fechaISO >= t.inicio && fechaISO <= t.fin) return num;
+        }
+        return null; // fecha fuera de cualquier trimestre conocido (ej. antes de iniciar el año)
+      }
+      const DIAS_SEMANA_ES_ASIS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+      function esDiaDeClaseDeEsteCurso_(fechaISO, curso){
+        const horarioCurso = cal.horarios && cal.horarios[curso];
+        if(!horarioCurso || !horarioCurso.dias) return true; // sin horario configurado, no se filtra (respaldo)
+        const nombreDia = DIAS_SEMANA_ES_ASIS[new Date(fechaISO+'T00:00:00').getDay()];
+        return horarioCurso.dias.includes(nombreDia);
+      }
+
+      // Códigos según CONFIGURACION del Libro Maestro: en blanco o ✓ = asistió; F o X = falla;
+      // E o e = falla excusada; R = asistió Y además cuenta como retardo; NC = no hubo clase
+      // (no cuenta como programada en absoluto).
+      function interpretarCodigo_(codigo){
+        const c = String(codigo||'').trim().toUpperCase();
+        if(c==='' || c==='✓') return { cuentaProgramada:true, asistio:true, excusada:false, retardo:false };
+        if(c==='F' || c==='X') return { cuentaProgramada:true, asistio:false, excusada:false, retardo:false };
+        if(c==='E') return { cuentaProgramada:true, asistio:false, excusada:true, retardo:false };
+        if(c==='R') return { cuentaProgramada:true, asistio:true, excusada:false, retardo:true };
+        if(c==='NC') return { cuentaProgramada:false, asistio:false, excusada:false, retardo:false };
+        return null; // código desconocido, no se cuenta y se avisa
+      }
 
       for(const curso of CURSOS_LIBRO_ASISTENCIA){
-        const nombreHoja = 'Informe-' + curso;
-        const ws = wb.Sheets[nombreHoja];
-        if(!ws){ lineas.push(`${curso}: no se encontró la hoja "${nombreHoja}", se omite.`); continue; }
+        const ws = wb.Sheets[curso]; // la hoja de DETALLE DIARIO se llama igual que el curso (ej. "602")
+        if(!ws){ lineas.push(`${curso}: no se encontró la hoja de detalle diario "${curso}", se omite.`); continue; }
         const range = XLSX.utils.decode_range(ws['!ref']);
         const maxRow = range.e.r + 1;
+        const maxCol = range.e.c + 1;
 
-        // 3 bloques de trimestre: T1 en C-H, T2 en I-N, T3 en O-T
-        const BLOQUES = [
-          { numero: 1, colProg:'C', colAsis:'D', colFallas:'E', colExc:'F', colRetardo:'G' },
-          { numero: 2, colProg:'I', colAsis:'J', colFallas:'K', colExc:'L', colRetardo:'M' },
-          { numero: 3, colProg:'O', colAsis:'P', colFallas:'Q', colExc:'R', colRetardo:'S' }
-        ];
+        // Leer qué fecha tiene cada columna (desde la fila 1), y a qué trimestre pertenece.
+        const columnasFecha = []; // { col, fechaISO, trimestre }
+        for(let c=3; c<=maxCol; c++){
+          const valorFecha = celdaXLSX_(ws, 1, c);
+          if(!valorFecha) continue;
+          let fechaISO;
+          if(valorFecha instanceof Date){
+            fechaISO = valorFecha.toISOString().slice(0,10);
+          }else if(typeof valorFecha === 'number'){
+            const fechaCalc = XLSX.SSF.parse_date_code(valorFecha);
+            fechaISO = `${fechaCalc.y}-${String(fechaCalc.m).padStart(2,'0')}-${String(fechaCalc.d).padStart(2,'0')}`;
+          }else{ continue; }
+          columnasFecha.push({ col: c, fechaISO, trimestre: trimestreDeFecha_(fechaISO) });
+        }
 
-        // Verificar cuáles trimestres de cada estudiante ya están congelados, para saber
-        // si esta subida debe ir dentro de su historial o en los campos en vivo.
+        // Hoja "Informe-{curso}" — se usa SOLO para comparar contra lo calculado y avisar
+        // si hay una discrepancia, nunca para escribir directamente (ver decisión de diseño).
+        const patronHoja = CFG_ASIS.patronNombreHoja || 'Informe-{curso}';
+        const wsInforme = wb.Sheets[patronHoja.replace('{curso}', curso)];
+        const LETRA_INICIO_TRIM = {
+          1: CFG_ASIS.columnaInicioTrimestre1 || 'C',
+          2: CFG_ASIS.columnaInicioTrimestre2 || 'I',
+          3: CFG_ASIS.columnaInicioTrimestre3 || 'O'
+        };
+        function letraMasOffsetAsis_(letraBase, offset){
+          return XLSX.utils.encode_col(column_index_from_string_(letraBase) - 1 + offset);
+        }
+
         const snapBoletines = await db.collection('boletines').where('curso','==', curso).get();
         const boletinesPorTi = {};
         snapBoletines.forEach(doc => { boletinesPorTi[doc.id] = doc.data(); });
@@ -1597,45 +1724,71 @@
           const tiTxto = String(Math.trunc(Number(ti)));
           if(!boletinesPorTi[tiTxto]){ if(nombre) sinCoincidencia.push(nombre); continue; }
 
-          const datosUpdate = {};
-          for(const bloque of BLOQUES){
-            const programadas = leerNumXLSX_(ws, fila, bloque.colProg);
-            if(programadas === null) continue; // ese trimestre está vacío en el archivo, no se toca
-            const asistencias = leerNumXLSX_(ws, fila, bloque.colAsis);
-            const excusadas = leerNumXLSX_(ws, fila, bloque.colExc);
-            const retardos = leerNumXLSX_(ws, fila, bloque.colRetardo);
-            const yaCongelado = !!boletinesPorTi[tiTxto][`trimestre${bloque.numero}`];
-            if(yaCongelado){
-              // trimestre pasado, ya cerrado: se actualiza dentro de su propio historial, sin chocar con nada
-              datosUpdate[`trimestre${bloque.numero}.clasesProgramadas`] = programadas;
-              datosUpdate[`trimestre${bloque.numero}.clasesAsistidas`] = asistencias;
-              datosUpdate[`trimestre${bloque.numero}.clasesExcusadas`] = excusadas;
-              datosUpdate[`trimestre${bloque.numero}.retardos`] = retardos;
-            }else if(bloque.numero === trimestreAsistenciaActual){
-              // ESTE es el único trimestre que debe tocar los campos "en vivo" — si hubiera
-              // otro trimestre futuro sin congelar en el mismo archivo (ej. T3 mientras
-              // se cursa T2), se ignora aquí a propósito, para no sobrescribir con datos
-              // que todavía no son reales (0 asistencias porque ese trimestre no ha pasado).
-              datosUpdate.clasesProgramadas = programadas;
-              datosUpdate.clasesAsistidas = asistencias;
-              datosUpdate.clasesExcusadas = excusadas;
-              datosUpdate.retardos = retardos;
+          // Recorrer TODAS las fechas de este estudiante, acumulando por trimestre,
+          // y guardando el detalle diario (solo las excepciones, igual que la cuadrícula).
+          const totalesPorTrimestre = { 1:{prog:0,asis:0,exc:0,ret:0}, 2:{prog:0,asis:0,exc:0,ret:0}, 3:{prog:0,asis:0,exc:0,ret:0} };
+          const asistenciaDiariaNueva = {};
+          for(const { col, fechaISO, trimestre } of columnasFecha){
+            if(!trimestre) continue; // fecha fuera de cualquier trimestre conocido, se ignora
+            if(!esDiaDeClaseDeEsteCurso_(fechaISO, curso)) continue; // dia que no corresponde al horario de esta materia (ej. Orientacion, Atencion a padres)
+            const codigoCrudo = celdaXLSX_(ws, fila, col);
+            const info = interpretarCodigo_(codigoCrudo);
+            if(!info){ continue; } // código desconocido — se podría avisar, se omite por ahora
+            if(String(codigoCrudo||'').trim()) asistenciaDiariaNueva[fechaISO] = String(codigoCrudo).trim().toUpperCase();
+            if(!info.cuentaProgramada) continue;
+            const t = totalesPorTrimestre[trimestre];
+            t.prog++;
+            if(info.asistio) t.asis++;
+            if(info.excusada) t.exc++;
+            if(info.retardo) t.ret++;
+          }
+
+          const datosUpdate = { asistenciaDiaria: asistenciaDiariaNueva };
+          for(const numero of [1,2,3]){
+            const t = totalesPorTrimestre[numero];
+            if(t.prog === 0) continue; // este trimestre no tuvo ninguna fecha para este estudiante
+            const yaCongelado = !!boletinesPorTi[tiTxto][`trimestre${numero}`];
+            const prefijo = yaCongelado ? `trimestre${numero}.` : '';
+            if(!yaCongelado && numero !== trimestreAsistenciaActual) continue; // prematuro, se omite
+
+            datosUpdate[`${prefijo}clasesProgramadas`] = t.prog;
+            datosUpdate[`${prefijo}clasesAsistidas`] = t.asis;
+            datosUpdate[`${prefijo}clasesExcusadas`] = t.exc;
+            datosUpdate[`${prefijo}retardos`] = t.ret;
+
+            // Comparar contra lo que dice la hoja "Informe-{curso}" (normalmente una fórmula
+            // sobre esta misma hoja) — si no coincide, es señal de un error real que hay que revisar.
+            if(wsInforme){
+              const colInicio = LETRA_INICIO_TRIM[numero];
+              const progInforme = leerNumXLSX_(wsInforme, fila, colInicio);
+              const asisInforme = leerNumXLSX_(wsInforme, fila, letraMasOffsetAsis_(colInicio,1));
+              if(progInforme !== null && progInforme !== t.prog){
+                discrepancias.push(`Curso ${curso}, ${nombre||tiTxto}, T${numero}: Informe dice ${progInforme} programadas, calculado desde el detalle diario da ${t.prog}.`);
+              }
+              if(asisInforme !== null && asisInforme !== t.asis){
+                discrepancias.push(`Curso ${curso}, ${nombre||tiTxto}, T${numero}: Informe dice ${asisInforme} asistencias, calculado desde el detalle diario da ${t.asis}.`);
+              }
             }
-            // si no está congelado Y no es el trimestre activo -> se omite, es prematuro
           }
-          if(Object.keys(datosUpdate).length){
-            batch.update(db.collection('boletines').doc(tiTxto), datosUpdate);
-            contador++; actualizadosCurso++;
-            if(contador % 400 === 0){ await batch.commit(); batch = db.batch(); }
-          }
+
+          batch.update(db.collection('boletines').doc(tiTxto), datosUpdate);
+          contador++; actualizadosCurso++;
+          if(contador % 400 === 0){ await batch.commit(); batch = db.batch(); }
         }
         await batch.commit();
         totalActualizados += actualizadosCurso;
-        let linea = `${curso}: ${actualizadosCurso} estudiantes actualizados (T1/T2/T3 según corresponda)`;
+        let linea = `${curso}: ${actualizadosCurso} estudiantes actualizados (detalle diario + totales calculados)`;
         if(sinCoincidencia.length) linea += ` — ⚠ ${sinCoincidencia.length} sin cuenta en el sistema: ${sinCoincidencia.slice(0,5).join(', ')}${sinCoincidencia.length>5?'…':''}`;
         lineas.push(linea);
       }
-      reporte.textContent = `✅ Total: ${totalActualizados} estudiantes.\n` + lineas.join('\n');
+      let texto = `✅ Total: ${totalActualizados} estudiantes.\n` + lineas.join('\n');
+      if(discrepancias.length){
+        texto += `\n\n⚠️ ${discrepancias.length} DISCREPANCIA(S) — el Excel dice algo distinto a lo calculado desde el detalle diario, revisar:\n` + discrepancias.slice(0,15).map(d=>'  · '+d).join('\n');
+        if(discrepancias.length>15) texto += `\n  … y ${discrepancias.length-15} más.`;
+      }else{
+        texto += `\n\n✅ Sin discrepancias: lo calculado coincide exacto con la hoja "Informe" del Excel.`;
+      }
+      reporte.textContent = texto;
     }catch(err){
       reporte.textContent = 'Error al subir el Libro Maestro: ' + err.message;
     }
