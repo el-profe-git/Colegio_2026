@@ -6,7 +6,7 @@
 <title>Panel del Docente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/tema-institucional.css">
+<link rel="stylesheet" href="../tema-institucional.css">
 <style>
   *{box-sizing:border-box;}
   body{margin:0;}
@@ -178,6 +178,30 @@
         <button class="btn warn" id="btnCongelarT3">🧊 Congelar Trimestre 3</button>
       </div>
     </div>
+
+    <div class="card">
+      <h2>📤 Exportar informe completo del curso</h2>
+      <div style="font-size:0.82rem; margin-bottom:8px;">
+        Un Excel con una fila por estudiante — actividades (nota/aciertos/tiempo/proceso), plan de mejora,
+        nota definitiva, autoevaluación/coevaluación, observaciones, y asistencia. Es el espejo de lo que
+        subes: aquí lo bajas todo de vuelta, tal cual quedó guardado.
+      </div>
+      <div class="fila">
+        <select id="cursoExportarInforme">
+          <option value="">Curso…</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <select id="trimestreExportarInforme">
+          <option value="activo">Trimestre en curso (en vivo)</option>
+          <option value="1">Trimestre 1</option>
+          <option value="2">Trimestre 2</option>
+          <option value="3">Trimestre 3</option>
+        </select>
+        <button class="btn secondary" id="btnExportarInformeCompleto">📤 Exportar informe</button>
+      </div>
+      <div id="reporteInformeCompleto" style="font-size:0.8rem; margin-top:8px; white-space:pre-wrap;"></div>
+    </div>
     </div><!-- /vista-notas -->
     <div class="vista-panel" data-vista="autoeval">
 
@@ -231,6 +255,28 @@
         <button class="btn secondary" id="btnCargarAsistencia">🔄 Cargar cuadrícula</button>
       </div>
       <div id="resumenAsistencia" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
+
+      <hr style="border:none; border-top:1.5px dashed #ccc; margin:14px 0;">
+      <div style="font-size:0.82rem; margin-bottom:6px;">
+        <b>📥 Subir Libro Maestro de Asistencia</b> — lee las hojas "Informe-{curso}" (T1/T2/T3 juntos)
+        y actualiza los 3 trimestres a la vez: si un trimestre ya está congelado para un estudiante,
+        se actualiza dentro de su historial; si sigue en curso, se actualiza en vivo.
+      </div>
+      <div class="fila">
+        <input type="file" id="inputLibroAsistencia" accept=".xlsx,.xls">
+        <button class="btn secondary" id="btnSubirLibroAsistencia">📥 Subir Libro Maestro</button>
+      </div>
+      <div id="reporteLibroAsistencia" style="font-size:0.8rem; margin:8px 0; white-space:pre-wrap;"></div>
+
+      <div class="fila" style="margin-top:6px;">
+        <select id="cursoExportarAsistencia">
+          <option value="">Curso a exportar…</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <button class="btn secondary" id="btnExportarAsistenciaExcel">📤 Exportar asistencia (Excel, 3 trimestres)</button>
+      </div>
+
       <div class="tabla-scroll" style="max-height:420px; overflow:auto;">
         <table style="width:100%; font-size:0.8rem; border-collapse:collapse;" id="tablaAsistencia">
           <thead><tr id="filaFechasAsistencia"><th style="position:sticky; left:0; background:var(--paper);">Estudiante</th></tr></thead>
@@ -423,6 +469,13 @@
     const addr = XLSX.utils.encode_cell({r:fila-1, c:col-1});
     const cell = ws[addr];
     return cell ? cell.v : null;
+  }
+  function leerNumXLSX_(ws, fila, colLetra){
+    const addr = colLetra + fila;
+    const cell = ws[addr];
+    if(!cell || cell.v === undefined || cell.v === null || cell.v === '') return null;
+    const n = Number(cell.v);
+    return isNaN(n) ? null : n;
   }
   function normalizarNumero_(v){
     if(v===null || v===undefined) return null;
@@ -1497,6 +1550,209 @@
       resumen.textContent = `✅ ${estudiantes.length} estudiantes, ${fechas.length} fechas de clase. Cada celda se guarda sola al salir de ella.`;
     }catch(err){
       resumen.textContent = 'Error al cargar: ' + err.message;
+    }
+  });
+
+  // ============ Subir Libro Maestro de Asistencia (T1/T2/T3 juntos, respeta congelados) ============
+  const CURSOS_LIBRO_ASISTENCIA = ['602','603','1001','1002','1003'];
+  document.getElementById('btnSubirLibroAsistencia').addEventListener('click', async ()=>{
+    const archivo = document.getElementById('inputLibroAsistencia').files[0];
+    const reporte = document.getElementById('reporteLibroAsistencia');
+    if(!archivo){ reporte.textContent = 'Selecciona el archivo del Libro Maestro primero.'; return; }
+    reporte.textContent = 'Leyendo archivo…';
+    try{
+      const buffer = await archivo.arrayBuffer();
+      const wb = XLSX.read(buffer, {type:'array'});
+      const lineas = [];
+      let totalActualizados = 0;
+
+      for(const curso of CURSOS_LIBRO_ASISTENCIA){
+        const nombreHoja = 'Informe-' + curso;
+        const ws = wb.Sheets[nombreHoja];
+        if(!ws){ lineas.push(`${curso}: no se encontró la hoja "${nombreHoja}", se omite.`); continue; }
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        const maxRow = range.e.r + 1;
+
+        // 3 bloques de trimestre: T1 en C-H, T2 en I-N, T3 en O-T
+        const BLOQUES = [
+          { numero: 1, colProg:'C', colAsis:'D', colFallas:'E', colExc:'F', colRetardo:'G' },
+          { numero: 2, colProg:'I', colAsis:'J', colFallas:'K', colExc:'L', colRetardo:'M' },
+          { numero: 3, colProg:'O', colAsis:'P', colFallas:'Q', colExc:'R', colRetardo:'S' }
+        ];
+
+        // Verificar cuáles trimestres de cada estudiante ya están congelados, para saber
+        // si esta subida debe ir dentro de su historial o en los campos en vivo.
+        const snapBoletines = await db.collection('boletines').where('curso','==', curso).get();
+        const boletinesPorTi = {};
+        snapBoletines.forEach(doc => { boletinesPorTi[doc.id] = doc.data(); });
+
+        let batch = db.batch();
+        let contador = 0;
+        let actualizadosCurso = 0, sinCoincidencia = [];
+
+        for(let fila = 2; fila <= maxRow; fila++){
+          const ti = celdaXLSX_(ws, fila, 1);
+          const nombre = celdaXLSX_(ws, fila, 2);
+          if(!ti) continue;
+          const tiTxto = String(Math.trunc(Number(ti)));
+          if(!boletinesPorTi[tiTxto]){ if(nombre) sinCoincidencia.push(nombre); continue; }
+
+          const datosUpdate = {};
+          for(const bloque of BLOQUES){
+            const programadas = leerNumXLSX_(ws, fila, bloque.colProg);
+            if(programadas === null) continue; // ese trimestre está vacío en el archivo, no se toca
+            const asistencias = leerNumXLSX_(ws, fila, bloque.colAsis);
+            const excusadas = leerNumXLSX_(ws, fila, bloque.colExc);
+            const retardos = leerNumXLSX_(ws, fila, bloque.colRetardo);
+            const yaCongelado = !!boletinesPorTi[tiTxto][`trimestre${bloque.numero}`];
+            if(yaCongelado){
+              // trimestre pasado, ya cerrado: se actualiza dentro de su propio historial, sin chocar con nada
+              datosUpdate[`trimestre${bloque.numero}.clasesProgramadas`] = programadas;
+              datosUpdate[`trimestre${bloque.numero}.clasesAsistidas`] = asistencias;
+              datosUpdate[`trimestre${bloque.numero}.clasesExcusadas`] = excusadas;
+              datosUpdate[`trimestre${bloque.numero}.retardos`] = retardos;
+            }else if(bloque.numero === trimestreAsistenciaActual){
+              // ESTE es el único trimestre que debe tocar los campos "en vivo" — si hubiera
+              // otro trimestre futuro sin congelar en el mismo archivo (ej. T3 mientras
+              // se cursa T2), se ignora aquí a propósito, para no sobrescribir con datos
+              // que todavía no son reales (0 asistencias porque ese trimestre no ha pasado).
+              datosUpdate.clasesProgramadas = programadas;
+              datosUpdate.clasesAsistidas = asistencias;
+              datosUpdate.clasesExcusadas = excusadas;
+              datosUpdate.retardos = retardos;
+            }
+            // si no está congelado Y no es el trimestre activo -> se omite, es prematuro
+          }
+          if(Object.keys(datosUpdate).length){
+            batch.update(db.collection('boletines').doc(tiTxto), datosUpdate);
+            contador++; actualizadosCurso++;
+            if(contador % 400 === 0){ await batch.commit(); batch = db.batch(); }
+          }
+        }
+        await batch.commit();
+        totalActualizados += actualizadosCurso;
+        let linea = `${curso}: ${actualizadosCurso} estudiantes actualizados (T1/T2/T3 según corresponda)`;
+        if(sinCoincidencia.length) linea += ` — ⚠ ${sinCoincidencia.length} sin cuenta en el sistema: ${sinCoincidencia.slice(0,5).join(', ')}${sinCoincidencia.length>5?'…':''}`;
+        lineas.push(linea);
+      }
+      reporte.textContent = `✅ Total: ${totalActualizados} estudiantes.\n` + lineas.join('\n');
+    }catch(err){
+      reporte.textContent = 'Error al subir el Libro Maestro: ' + err.message;
+    }
+  });
+
+  // ============ Exportar asistencia a Excel (espejo del Libro Maestro, T1/T2/T3) ============
+  // ============ Exportar informe completo del curso (espejo: notas + plan de mejora + ============
+  // ============ autoeval/coeval + observaciones + asistencia, en el trimestre elegido) ============
+  document.getElementById('btnExportarInformeCompleto').addEventListener('click', async ()=>{
+    const curso = document.getElementById('cursoExportarInforme').value;
+    const trimestreSel = document.getElementById('trimestreExportarInforme').value; // 'activo', '1', '2' o '3'
+    const reporte = document.getElementById('reporteInformeCompleto');
+    if(!curso){ reporte.textContent = 'Selecciona un curso.'; return; }
+    reporte.textContent = 'Generando informe…';
+    try{
+      const snap = await db.collection('boletines').where('curso','==', curso).get();
+      const estudiantes = [];
+      snap.forEach(doc => estudiantes.push({ id: doc.id, ...doc.data() }));
+      estudiantes.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+
+      // Cada estudiante toma sus datos de la fuente correcta: si se pidió un trimestre
+      // congelado y ese estudiante SÍ lo tiene congelado, se usa ese historial; si se
+      // pidió "en curso" (o el trimestre pedido aún no está congelado para ese estudiante),
+      // se usan los campos en vivo.
+      function fuenteDe(est){
+        if(trimestreSel === 'activo') return est;
+        const congelado = est[`trimestre${trimestreSel}`];
+        return congelado || est; // si no está congelado todavía, se cae de vuelta a los datos en vivo
+      }
+
+      const maxNotas = Math.max(1, ...estudiantes.map(e => (fuenteDe(e).notas || []).length));
+      const encabezado = ['TI','Nombre'];
+      for(let i=0;i<maxNotas;i++){
+        encabezado.push(`Actividad ${i+1} - Nombre`, `Actividad ${i+1} - Nota`, `Actividad ${i+1} - Aciertos`, `Actividad ${i+1} - Tiempo`);
+      }
+      encabezado.push(
+        'Nota Definitiva', 'Autoevaluación', 'Coevaluación',
+        'Plan Mejora - Reportado', 'Plan Mejora - Entregó', 'Plan Mejora - Presentó', 'Plan Mejora - Aprobó',
+        'Obs. Cognitiva', 'Obs. Procedimental', 'Obs. Actitudinal', 'Obs. General',
+        'Clases Programadas', 'Clases Asistidas', 'Clases Excusadas', 'Retardos',
+        'Competencia a lograr'
+      );
+
+      const filas = [encabezado];
+      for(const est of estudiantes){
+        const f = fuenteDe(est);
+        const fila = [est.ti || est.id, est.nombre || ''];
+        const notas = f.notas || [];
+        for(let i=0;i<maxNotas;i++){
+          const n = notas[i];
+          fila.push(n ? (n.actividad||'') : '', n && typeof n.nota==='number' ? n.nota : '', n && typeof n.aciertos==='number' ? n.aciertos : '', n && typeof n.tiempo==='number' ? n.tiempo : '');
+        }
+        const plan = f.planMejora || (trimestreSel==='1' || (trimestreSel==='activo' && !est.trimestre1) ? est.planMejoraT1 : est.planMejoraSubcomisionActual) || {};
+        fila.push(
+          typeof f.notaDefinitiva==='number' ? f.notaDefinitiva : (typeof f.nota==='number' ? f.nota : ''),
+          typeof f.autoevaluacion==='number' ? f.autoevaluacion : '',
+          typeof f.coevaluacion==='number' ? f.coevaluacion : '',
+          plan.reportado||'', plan.entrego||'', plan.presento||'', plan.aprobo||'',
+          f.observacionCognitiva||'', f.observacionProcedimental||'', f.observacionActitudinal||'', f.observacionGeneral||'',
+          typeof f.clasesProgramadas==='number' ? f.clasesProgramadas : '',
+          typeof f.clasesAsistidas==='number' ? f.clasesAsistidas : '',
+          typeof f.clasesExcusadas==='number' ? f.clasesExcusadas : '',
+          typeof f.retardos==='number' ? f.retardos : '',
+          f.competenciaALograr || est.competenciaALograr || ''
+        );
+        filas.push(fila);
+      }
+
+      const wsOut = XLSX.utils.aoa_to_sheet(filas);
+      const wbOut = XLSX.utils.book_new();
+      const etiquetaTrimestre = trimestreSel==='activo' ? 'EnCurso' : `T${trimestreSel}`;
+      XLSX.utils.book_append_sheet(wbOut, wsOut, curso);
+      XLSX.writeFile(wbOut, `Informe_${curso}_${etiquetaTrimestre}.xlsx`);
+      reporte.textContent = `✅ Exportados ${estudiantes.length} estudiantes del curso ${curso} (${etiquetaTrimestre}).`;
+    }catch(err){
+      reporte.textContent = 'Error al exportar: ' + err.message;
+    }
+  });
+
+  document.getElementById('btnExportarAsistenciaExcel').addEventListener('click', async ()=>{
+    const curso = document.getElementById('cursoExportarAsistencia').value;
+    const reporte = document.getElementById('reporteLibroAsistencia');
+    if(!curso){ reporte.textContent = 'Selecciona un curso para exportar.'; return; }
+    reporte.textContent = 'Generando archivo…';
+    try{
+      const snap = await db.collection('boletines').where('curso','==', curso).get();
+      const estudiantes = [];
+      snap.forEach(doc => estudiantes.push({ id: doc.id, ...doc.data() }));
+      estudiantes.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+
+      const encabezado = ['TI','Nombre completo'];
+      for(const n of [1,2,3]){
+        encabezado.push(`T${n} - Programadas`, `T${n} - Asistencias`, `T${n} - Excusadas`, `T${n} - Retardos`);
+      }
+      const filas = [encabezado];
+      for(const est of estudiantes){
+        const fila = [est.ti || est.id, est.nombre || ''];
+        for(const n of [1,2,3]){
+          const congelado = est[`trimestre${n}`];
+          const fuente = congelado || (n===trimestreAsistenciaActual ? est : null);
+          fila.push(
+            fuente && typeof fuente.clasesProgramadas==='number' ? fuente.clasesProgramadas : '',
+            fuente && typeof fuente.clasesAsistidas==='number' ? fuente.clasesAsistidas : '',
+            fuente && typeof fuente.clasesExcusadas==='number' ? fuente.clasesExcusadas : '',
+            fuente && typeof fuente.retardos==='number' ? fuente.retardos : ''
+          );
+        }
+        filas.push(fila);
+      }
+
+      const wsOut = XLSX.utils.aoa_to_sheet(filas);
+      const wbOut = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wbOut, wsOut, `Informe-${curso}`);
+      XLSX.writeFile(wbOut, `Asistencia_${curso}_export.xlsx`);
+      reporte.textContent = `✅ Exportados ${estudiantes.length} estudiantes del curso ${curso} (T1/T2/T3).`;
+    }catch(err){
+      reporte.textContent = 'Error al exportar: ' + err.message;
     }
   });
 
