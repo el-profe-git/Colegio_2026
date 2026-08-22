@@ -89,8 +89,12 @@
 
 <main>
   <div class="card" id="loginCard">
-    <p>Inicia sesión con tu cuenta de docente.</p>
-    <button class="btn" id="btnLogin">Iniciar sesión con Google</button>
+    <p>Ingresa con tu correo y la clave que te asignó el administrador.</p>
+    <label>Correo</label>
+    <input type="email" id="loginCorreo" autocomplete="username" style="width:100%; padding:10px; margin:4px 0 10px 0; border:2px solid var(--ink); border-radius:8px; font-size:16px;">
+    <label>Clave</label>
+    <input type="password" id="loginClave" autocomplete="current-password" style="width:100%; padding:10px; margin:4px 0 10px 0; border:2px solid var(--ink); border-radius:8px; font-size:16px;">
+    <button class="btn" id="btnLogin">Entrar</button>
     <div id="loginHint" style="color:var(--bad); font-size:0.85rem; margin-top:8px;"></div>
   </div>
 
@@ -101,6 +105,9 @@
       <button class="btn-menu activo" data-vista="notas">📊 Notas y Boletín</button>
       <button class="btn-menu" data-vista="autoeval">📝 Autoeval / Observaciones</button>
       <button class="btn-menu" data-vista="asistencia">📅 Asistencia</button>
+      <button class="btn-menu" data-vista="formativo">📝 Proceso Formativo</button>
+      <button class="btn-menu" data-vista="correos">✉️ Correos y Acudientes</button>
+      <button class="btn-menu" data-vista="nuevaactividad">📤 Preparar Actividad Nueva</button>
       <button class="btn-menu" data-vista="actividades">⚙️ Actividades</button>
       <button class="btn-menu" data-vista="resultados">📋 Resultados</button>
     </nav>
@@ -163,6 +170,11 @@
       <div class="fila">
         <button class="btn" id="btnHabilitarAlertaPlanMejora">✅ Habilitar alerta</button>
         <button class="btn warn" id="btnDeshabilitarAlertaPlanMejora">🚫 Deshabilitar alerta</button>
+      </div>
+      <div style="font-size:0.82rem; margin:10px 0 6px 0;">Calculadora "¿Qué nota necesitas en Trimestre 3?" en el boletín: <b id="estadoCalculoT3Txt">—</b></div>
+      <div class="fila">
+        <button class="btn" id="btnHabilitarCalculoT3">✅ Habilitar calculadora</button>
+        <button class="btn warn" id="btnDeshabilitarCalculoT3">🚫 Deshabilitar calculadora</button>
       </div>
 
       <hr style="border:none; border-top:1.5px dashed #ccc; margin:14px 0;">
@@ -287,6 +299,162 @@
       </div>
     </div>
     </div><!-- /vista-asistencia -->
+    <div class="vista-panel" data-vista="formativo">
+
+    <div class="card">
+      <h2>📝 Tema del día — por curso</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Lo que configures aquí determina el formulario que le aparece HOY al estudiante en su
+        Boletín (Proceso Formativo). No es obligatorio llenarlo todos los días — si no hay nada
+        configurado para hoy, el estudiante simplemente no ve ningún formulario que llenar.
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Curso</label>
+          <select id="temaCurso">
+            <option value="602">602</option><option value="603">603</option>
+            <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+          </select>
+        </div>
+        <div class="campo"><label>Fecha</label><input type="date" id="temaFecha"></div>
+      </div>
+      <div class="campo" style="margin-bottom:10px;">
+        <label>Tipo de clase (marca todas las que apliquen)</label>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; font-size:0.82rem; margin-top:4px;">
+          <label style="display:flex; align-items:center; gap:4px; font-weight:400;"><input type="checkbox" class="chkTipoClase" value="taller"> Taller en clase</label>
+          <label style="display:flex; align-items:center; gap:4px; font-weight:400;"><input type="checkbox" class="chkTipoClase" value="tarea"> Tarea para casa</label>
+          <label style="display:flex; align-items:center; gap:4px; font-weight:400;"><input type="checkbox" class="chkTipoClase" value="evaluacion"> Evaluación</label>
+          <label style="display:flex; align-items:center; gap:4px; font-weight:400;"><input type="checkbox" class="chkTipoClase" value="tablero"> Participación al tablero</label>
+          <label style="display:flex; align-items:center; gap:4px; font-weight:400;"><input type="checkbox" class="chkTipoClase" value="participacion"> Participación en clase</label>
+          <label style="display:flex; align-items:center; gap:4px; font-weight:400;"><input type="checkbox" class="chkTipoClase" value="otro"> Otro (especifica abajo)</label>
+        </div>
+      </div>
+      <div class="campo" style="margin-bottom:10px;">
+        <label>Tema visto hoy</label>
+        <input type="text" id="temaTexto" style="width:100%;" placeholder="Ej: Suma de ángulos internos de un triángulo">
+      </div>
+      <div class="fila">
+        <button class="btn" id="btnGuardarTema">💾 Guardar tema del día</button>
+        <button class="btn secondary" id="btnRepetirClaseAnterior">🔁 Repetir lo de la última clase</button>
+      </div>
+      <div id="hintTema" style="font-size:0.85rem; margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>🚨 Registro de discrepancias</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Cuando un estudiante autorreporta participación un día en que tu asistencia oficial
+        dice que faltó, queda aquí — tu asistencia siempre manda, esto es solo para que revises
+        si algo no cuadra.
+      </div>
+      <div class="fila">
+        <select id="discrepanciaCurso">
+          <option value="">Todos los cursos</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <button class="btn secondary" id="btnCargarDiscrepancias">🔄 Consultar</button>
+      </div>
+      <div id="resumenDiscrepancias" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
+      <div class="tabla-wrap">
+        <table id="tablaDiscrepancias">
+          <thead><tr><th>Fecha</th><th>Curso</th><th>Estudiante</th><th>Detalle</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    </div><!-- /vista-formativo -->
+    <div class="vista-panel" data-vista="correos">
+
+    <div class="card">
+      <h2>👪 Acudientes</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        El correo del acudiente solo se usa si marcas "Autorizado" — si no está autorizado,
+        el sistema nunca le manda nada, así el correo esté cargado.
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Documento del estudiante (TI)</label><input type="text" id="acudienteTi" style="width:160px;"></div>
+        <div class="campo"><label>Nombre del acudiente</label><input type="text" id="acudienteNombre" style="width:200px;"></div>
+        <div class="campo"><label>Correo del acudiente</label><input type="email" id="acudienteCorreo" style="width:220px;"></div>
+        <div class="campo"><label>Autorizado</label>
+          <select id="acudienteAutorizado"><option value="no">No</option><option value="si">Sí</option></select>
+        </div>
+      </div>
+      <button class="btn" id="btnGuardarAcudiente">💾 Guardar</button>
+      <div id="hintAcudiente" style="font-size:0.85rem; margin-top:8px;"></div>
+
+      <div class="fila" style="margin-top:14px;">
+        <select id="acudienteCursoFiltro">
+          <option value="">Todos los cursos</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <button class="btn secondary" id="btnCargarAcudientes">🔄 Consultar</button>
+      </div>
+      <div id="resumenAcudientes" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
+      <div class="tabla-wrap">
+        <table id="tablaAcudientes">
+          <thead><tr><th>Estudiante</th><th>Curso</th><th>Acudiente</th><th>Correo</th><th>Autorizado</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⏰ Fecha de caducidad por actividad</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Fija la fecha límite de cada actividad — con esto configurado, el sistema de correos
+        automáticos (Notificador.gs) sabe cuándo avisar. Ver el archivo aparte para instalarlo.
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Nombre EXACTO de la actividad (como en la planilla)</label><input type="text" id="caducidadActividad" style="width:280px;"></div>
+        <div class="campo"><label>Fecha límite</label><input type="date" id="caducidadFecha"></div>
+      </div>
+      <button class="btn" id="btnGuardarCaducidad">💾 Guardar fecha límite</button>
+      <div id="hintCaducidad" style="font-size:0.85rem; margin-top:8px;"></div>
+    </div>
+
+    </div><!-- /vista-correos -->
+    <div class="vista-panel" data-vista="nuevaactividad">
+
+    <div class="card">
+      <h2>📤 Preparar Actividad Nueva</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Esto NO sube el archivo por ti — te dice exactamente dónde ponerlo en GitHub/Cloudflare,
+        y te arma la línea exacta para pegar en el archivo de configuración del trimestre.
+        Copia y pega, sin hacer cuentas.
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Materia</label>
+          <select id="naMateria"><option value="matematicas">Matemáticas</option><option value="fisica">Física</option></select>
+        </div>
+        <div class="campo"><label>Grado</label>
+          <select id="naGrado"><option value="sexto">Sexto</option><option value="decimo">Décimo</option></select>
+        </div>
+        <div class="campo"><label>Trimestre</label>
+          <select id="naTrimestre"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>
+        </div>
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Nombre de la carpeta (sin espacios, ej: OPER_DECIMALES)</label><input type="text" id="naCarpeta" style="width:240px;"></div>
+        <div class="campo"><label>Nombre del archivo HTML (ej: Taller-Matematicas.html)</label><input type="text" id="naArchivo" style="width:260px;"></div>
+      </div>
+      <div class="campo" style="margin-bottom:10px;">
+        <label>Nombre EXACTO de la actividad, como aparece en la planilla de notas</label>
+        <input type="text" id="naNombreActividad" style="width:100%;">
+      </div>
+      <button class="btn" id="btnPrepararActividad">📋 Generar instrucciones</button>
+
+      <div id="resultadoNuevaActividad" class="hidden" style="margin-top:14px; padding:12px; background:var(--paper); border:1.5px dashed var(--ink); border-radius:8px;">
+        <div style="font-weight:700; margin-bottom:6px;">1. Sube tu archivo aquí (misma ruta en GitHub y en Cloudflare):</div>
+        <code id="naRutaCompleta" style="display:block; background:#fff; padding:8px; border-radius:6px; word-break:break-all;"></code>
+        <div style="font-weight:700; margin:12px 0 6px 0;">2. Pega esta línea en <code id="naNombreConfig"></code> (sin tocar nada más de ese archivo):</div>
+        <code id="naLineaConfig" style="display:block; background:#fff; padding:8px; border-radius:6px; word-break:break-all;"></code>
+        <button class="btn secondary mini" id="btnCopiarLinea" style="margin-top:8px;">📋 Copiar la línea</button>
+      </div>
+    </div>
+
+    </div><!-- /vista-nuevaactividad -->
     <div class="vista-panel" data-vista="actividades">
 
     <!-- ============ CATEGORÍA 1: CONFIGURACIÓN POR ACTIVIDAD ============ -->
@@ -422,7 +590,8 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
   const PUNTOS_MAXIMOS = 20;
-  const CORREO_DOCENTE_ESPERADO = 'leonardo.antolinez@colcompartirsubaied.edu.co';
+  // (ya no hace falta un correo de docente fijo aquí — el Panel valida contra la
+  // colección "docentes" en Firestore, ver el login más abajo)
 
   // Mismo webhook de Notificador.gs, pero usado al revés: aquí el docente escribe
   // y se envía al correo del estudiante. Pega aquí el mismo link /exec y la misma
@@ -503,7 +672,7 @@
     return mapa;
   }
 
-  function parsearHojaPlanilla_(wb, nombreHoja){
+  function parsearHojaPlanilla_(wb, nombreHoja, correosYaAsignados){
     const ws = wb.Sheets[nombreHoja];
     if(!ws || !ws['!ref']) return { estudiantes: [], avisos: [] };
     const range = XLSX.utils.decode_range(ws['!ref']);
@@ -684,7 +853,7 @@
 
       const letraPlanSub = CFG.columnaInicioPlanMejoraSubcomision || 'AM';
       const datosEstudiante = {
-        ti: String(ti), correo: (celdaXLSX_(ws,f,colEmail)||'').toString().trim().toLowerCase(),
+        ti: String(ti), correo: generarUsuarioSintetico_(celdaXLSX_(ws,f,colNombre), ti, correosYaAsignados || new Map()),
         nombre: celdaXLSX_(ws,f,colNombre), curso: nombreHoja,
         materia: (nombreHoja==='602'||nombreHoja==='603') ? 'Matemáticas' : 'Física',
         notas: notasCrudas,
@@ -741,14 +910,48 @@
   }
 
   /** Lee el archivo elegido y devuelve {estudiantes, avisos} solo de las hojas pedidas. */
+  // Genera el "usuario" interno (no es un correo real, nunca recibe mensajes) a partir
+  // del nombre completo del estudiante — evita el choque con las cuentas institucionales
+  // reales de Google que causaba bloqueos al iniciar sesión. Si dos estudiantes generan
+  // el mismo usuario (nombres iguales), se distingue agregando los últimos 4 dígitos del
+  // documento, para que nunca choquen entre sí.
+  function generarUsuarioSintetico_(nombreCompleto, ti, correosYaAsignados){
+    const base = String(nombreCompleto||'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // quita tildes
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g,'') // quita cualquier símbolo raro
+      .trim().replace(/\s+/g,''); // espacios fuera, todo pegado, sin puntos
+    let usuario = `${base}@leoteexplica.com`;
+    const dueñoActual = correosYaAsignados.get(usuario);
+    if(dueñoActual && dueñoActual !== String(ti)){
+      // ya existe ese mismo nombre para OTRO documento -> se distingue con el documento
+      usuario = `${base}${String(ti).slice(-4)}@leoteexplica.com`;
+    }
+    correosYaAsignados.set(usuario, String(ti));
+    return usuario;
+  }
+
   async function leerPlanillaElegida_(hojasAProcesar){
     const input = document.getElementById('inputPlanilla');
     if(!input.files.length) throw new Error('Elige un archivo primero.');
     const buffer = await input.files[0].arrayBuffer();
     const wb = XLSX.read(buffer, {type:'array'});
+
+    // Se traen TODOS los usuarios ya asignados antes (de cualquier curso, de subidas
+    // anteriores) para que la detección de nombres repetidos funcione de verdad, no
+    // solo dentro de esta subida.
+    const correosYaAsignados = new Map(); // usuario -> ti dueño
+    try{
+      const snapExistentes = await db.collection('boletines').get();
+      snapExistentes.forEach(doc=>{
+        const d = doc.data();
+        if(d.correo) correosYaAsignados.set(d.correo, String(d.ti||doc.id));
+      });
+    }catch(err){ /* si falla, se sigue igual -- la deteccion solo cubre esta subida */ }
+
     const porHoja = {};
     for(const hoja of hojasAProcesar){
-      porHoja[hoja] = parsearHojaPlanilla_(wb, hoja);
+      porHoja[hoja] = parsearHojaPlanilla_(wb, hoja, correosYaAsignados);
     }
     return porHoja;
   }
@@ -870,6 +1073,24 @@
     cargarEstadoAlertaPlanMejora_();
   });
 
+  async function cargarEstadoCalculoT3_(){
+    try{
+      const snap = await db.collection('config').doc('boletin-consulta').get();
+      const habilitada = snap.exists ? (snap.data().calculoNotaT3Habilitado === true) : false;
+      document.getElementById('estadoCalculoT3Txt').textContent = habilitada ? 'Habilitada ✅' : 'Deshabilitada 🚫';
+    }catch(err){
+      document.getElementById('estadoCalculoT3Txt').textContent = 'No se pudo leer';
+    }
+  }
+  document.getElementById('btnHabilitarCalculoT3').addEventListener('click', async ()=>{
+    await db.collection('config').doc('boletin-consulta').set({calculoNotaT3Habilitado:true}, {merge:true});
+    cargarEstadoCalculoT3_();
+  });
+  document.getElementById('btnDeshabilitarCalculoT3').addEventListener('click', async ()=>{
+    await db.collection('config').doc('boletin-consulta').set({calculoNotaT3Habilitado:false}, {merge:true});
+    cargarEstadoCalculoT3_();
+  });
+
   // T1 es único y nunca se repite, por eso tiene su propio campo fijo (planMejoraT1).
   // T2 y T3 comparten las MISMAS columnas del Excel (se reutilizan cada trimestre), por
   // eso ambos leen del mismo campo genérico planMejoraSubcomisionActual.
@@ -950,25 +1171,45 @@
   let todosLosIntentos = [];
   let seleccionados = new Set();
 
-  document.getElementById('btnLogin').addEventListener('click', ()=>{
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch(err=>{
-      document.getElementById('loginHint').textContent = 'Error: ' + err.message;
-    });
+  document.getElementById('btnLogin').addEventListener('click', async ()=>{
+    const correo = document.getElementById('loginCorreo').value.trim().toLowerCase();
+    const clave = document.getElementById('loginClave').value;
+    const hint = document.getElementById('loginHint');
+    hint.textContent = '';
+    if(!correo || !clave){ hint.textContent = 'Completa correo y clave.'; return; }
+    document.getElementById('btnLogin').disabled = true;
+    try{
+      await auth.signInWithEmailAndPassword(correo, clave);
+      // el resto (verificar rol, mostrar el panel) lo maneja onAuthStateChanged abajo,
+      // tanto para este login fresco como para cuando se recarga la página ya con sesión.
+    }catch(err){
+      document.getElementById('loginHint').textContent = 'Correo o clave incorrectos.';
+      document.getElementById('btnLogin').disabled = false;
+    }
   });
 
-  auth.onAuthStateChanged(user=>{
-    if(!user) return;
-    if(user.email !== CORREO_DOCENTE_ESPERADO){
-      document.getElementById('loginHint').textContent = 'Esta cuenta (' + user.email + ') no tiene permiso para ver el Panel.';
-      auth.signOut();
-      return;
+  auth.onAuthStateChanged(async user=>{
+    const hint = document.getElementById('loginHint');
+    if(!user) return; // sigue en la pantalla de login, sin sesión
+    try{
+      const docDocente = await db.collection('docentes').doc(user.email.toLowerCase()).get();
+      if(!docDocente.exists || docDocente.data().activo === false){
+        hint.textContent = 'Esta cuenta no tiene permiso para ver el Panel — contacta al administrador.';
+        await auth.signOut();
+        document.getElementById('btnLogin').disabled = false;
+        return;
+      }
+      window.__datosDocenteActual = { correo: user.email.toLowerCase(), ...docDocente.data() };
+      document.getElementById('loginCard').classList.add('hidden');
+      document.getElementById('panel').classList.remove('hidden');
+      cargarIntentos();
+      cargarEstadoConsulta_();
+      cargarEstadoAlertaPlanMejora_();
+      cargarEstadoCalculoT3_();
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+      document.getElementById('btnLogin').disabled = false;
     }
-    document.getElementById('loginCard').classList.add('hidden');
-    document.getElementById('panel').classList.remove('hidden');
-    cargarIntentos();
-    cargarEstadoConsulta_();
-    cargarEstadoAlertaPlanMejora_();
   });
 
   // ============ Navegación del menú lateral ============
@@ -1591,8 +1832,35 @@
           const td = document.createElement('td');
           const input = document.createElement('input');
           input.type = 'text'; input.maxLength = 2;
+          input.className = 'celda-asistencia';
           input.value = asistenciaGuardada[f] || '';
           input.style.cssText = 'width:34px; text-align:center; font-size:0.75rem; padding:2px;';
+          input.addEventListener('keydown', (ev)=>{
+            const teclas = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'];
+            if(!teclas.includes(ev.key)) return;
+            ev.preventDefault();
+            const tdActual = input.closest('td');
+            const trActual = input.closest('tr');
+            const indiceCelda = Array.prototype.indexOf.call(trActual.children, tdActual);
+            let trDestino = null;
+            if(ev.key==='ArrowUp'){ trDestino = trActual.previousElementSibling; }
+            else if(ev.key==='ArrowDown' || ev.key==='Enter'){ trDestino = trActual.nextElementSibling; }
+            if(trDestino){
+              const tdDestino = trDestino.children[indiceCelda];
+              const inputDestino = tdDestino && tdDestino.querySelector('input');
+              if(inputDestino){ inputDestino.focus(); inputDestino.select(); return; }
+            }
+            if(ev.key==='ArrowLeft'){
+              const tdAnterior = tdActual.previousElementSibling;
+              const inputAnterior = tdAnterior && tdAnterior.querySelector('input');
+              if(inputAnterior){ inputAnterior.focus(); inputAnterior.select(); }
+            }
+            if(ev.key==='ArrowRight'){
+              const tdSiguiente = tdActual.nextElementSibling;
+              const inputSiguiente = tdSiguiente && tdSiguiente.querySelector('input');
+              if(inputSiguiente){ inputSiguiente.focus(); inputSiguiente.select(); }
+            }
+          });
           input.addEventListener('blur', async ()=>{
             let v = input.value.trim().toUpperCase();
             const codigosValidos = ['F','E','X','R','NC'];
@@ -1797,6 +2065,181 @@
   // ============ Exportar asistencia a Excel (espejo del Libro Maestro, T1/T2/T3) ============
   // ============ Exportar informe completo del curso (espejo: notas + plan de mejora + ============
   // ============ autoeval/coeval + observaciones + asistencia, en el trimestre elegido) ============
+  // ============ Tema del día (por curso) ============
+  document.getElementById('temaFecha').value = new Date().toISOString().slice(0,10);
+
+  document.getElementById('btnGuardarTema').addEventListener('click', async ()=>{
+    const curso = document.getElementById('temaCurso').value;
+    const fecha = document.getElementById('temaFecha').value;
+    const tema = document.getElementById('temaTexto').value.trim();
+    const tipos = Array.from(document.querySelectorAll('.chkTipoClase:checked')).map(c=>c.value);
+    const hint = document.getElementById('hintTema');
+    if(!fecha){ hint.textContent = 'Selecciona una fecha.'; return; }
+    if(!tipos.length && !tema){ hint.textContent = 'Marca al menos un tipo de clase o escribe el tema.'; return; }
+    hint.textContent = 'Guardando…';
+    try{
+      await db.collection('temasDelDia').doc(`${curso}_${fecha}`).set({
+        curso, fecha, tema, tipos, actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      hint.textContent = `✅ Guardado para el curso ${curso}, ${fecha}.`;
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
+  document.getElementById('btnRepetirClaseAnterior').addEventListener('click', async ()=>{
+    const curso = document.getElementById('temaCurso').value;
+    const hint = document.getElementById('hintTema');
+    hint.textContent = 'Buscando la última clase configurada…';
+    try{
+      // Busca hacia atrás desde ayer, hasta 14 días, la última fecha con tema guardado.
+      let encontrado = null;
+      for(let i=1; i<=14 && !encontrado; i++){
+        const d = new Date(); d.setDate(d.getDate()-i);
+        const fechaISO = d.toISOString().slice(0,10);
+        const snap = await db.collection('temasDelDia').doc(`${curso}_${fechaISO}`).get();
+        if(snap.exists) encontrado = snap.data();
+      }
+      if(!encontrado){ hint.textContent = 'No se encontró ninguna clase configurada en los últimos 14 días.'; return; }
+      document.getElementById('temaTexto').value = encontrado.tema || '';
+      document.querySelectorAll('.chkTipoClase').forEach(c=>{ c.checked = (encontrado.tipos||[]).includes(c.value); });
+      hint.textContent = `Copiado de ${encontrado.fecha} — revisa y dale "Guardar tema del día" para aplicarlo a hoy.`;
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
+  // ============ Registro de discrepancias ============
+  document.getElementById('btnCargarDiscrepancias').addEventListener('click', async ()=>{
+    const curso = document.getElementById('discrepanciaCurso').value;
+    const resumen = document.getElementById('resumenDiscrepancias');
+    const tbody = document.querySelector('#tablaDiscrepancias tbody');
+    tbody.innerHTML = '';
+    resumen.textContent = 'Cargando…';
+    try{
+      const snap = await db.collection('discrepancias').get();
+      let items = [];
+      snap.forEach(doc => items.push(doc.data()));
+      if(curso) items = items.filter(d => d.curso === curso);
+      items.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+      resumen.textContent = `${items.length} discrepancia(s).`;
+      for(const d of items){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.fecha||''}</td><td>${d.curso||''}</td><td>${d.nombre||d.correo||''}</td><td>${d.detalle||''}</td>`;
+        tbody.appendChild(tr);
+      }
+    }catch(err){
+      resumen.textContent = 'Error al cargar: ' + err.message;
+    }
+  });
+
+  // ============ Acudientes ============
+  document.getElementById('btnGuardarAcudiente').addEventListener('click', async ()=>{
+    const ti = document.getElementById('acudienteTi').value.trim();
+    const nombre = document.getElementById('acudienteNombre').value.trim();
+    const correo = document.getElementById('acudienteCorreo').value.trim().toLowerCase();
+    const autorizado = document.getElementById('acudienteAutorizado').value === 'si';
+    const hint = document.getElementById('hintAcudiente');
+    if(!ti){ hint.textContent = 'Escribe el documento del estudiante.'; return; }
+    hint.textContent = 'Guardando…';
+    try{
+      const docEst = await db.collection('boletines').doc(ti).get();
+      if(!docEst.exists){ hint.textContent = '⚠ No existe ningún estudiante con ese documento en el sistema.'; return; }
+      await db.collection('boletines').doc(ti).update({
+        acudiente: { nombre, correo, autorizado }
+      });
+      hint.textContent = `✅ Guardado para ${docEst.data().nombre}. Autorizado: ${autorizado ? 'Sí' : 'No'}.`;
+      document.getElementById('acudienteTi').value = '';
+      document.getElementById('acudienteNombre').value = '';
+      document.getElementById('acudienteCorreo').value = '';
+      document.getElementById('acudienteAutorizado').value = 'no';
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
+  document.getElementById('btnCargarAcudientes').addEventListener('click', async ()=>{
+    const curso = document.getElementById('acudienteCursoFiltro').value;
+    const resumen = document.getElementById('resumenAcudientes');
+    const tbody = document.querySelector('#tablaAcudientes tbody');
+    tbody.innerHTML = '';
+    resumen.textContent = 'Cargando…';
+    try{
+      let query = db.collection('boletines');
+      if(curso) query = query.where('curso','==', curso);
+      const snap = await query.get();
+      let items = [];
+      snap.forEach(doc => { const d = doc.data(); if(d.acudiente) items.push(d); });
+      items.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+      resumen.textContent = `${items.length} estudiante(s) con acudiente registrado.`;
+      for(const d of items){
+        const tr = document.createElement('tr');
+        const ac = d.acudiente || {};
+        tr.innerHTML = `<td>${d.nombre||''}</td><td>${d.curso||''}</td><td>${ac.nombre||''}</td><td>${ac.correo||''}</td><td>${ac.autorizado ? '✅ Sí' : '🚫 No'}</td>`;
+        tbody.appendChild(tr);
+      }
+    }catch(err){
+      resumen.textContent = 'Error al cargar: ' + err.message;
+    }
+  });
+
+  // ============ Fecha de caducidad por actividad ============
+  document.getElementById('btnGuardarCaducidad').addEventListener('click', async ()=>{
+    const actividad = document.getElementById('caducidadActividad').value.trim();
+    const fecha = document.getElementById('caducidadFecha').value;
+    const hint = document.getElementById('hintCaducidad');
+    if(!actividad || !fecha){ hint.textContent = 'Completa el nombre de la actividad y la fecha.'; return; }
+    hint.textContent = 'Guardando…';
+    try{
+      await db.collection('fechasLimite').doc(actividad).set({ actividad, fecha });
+      hint.textContent = `✅ "${actividad}" vence el ${fecha}.`;
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
+  // ============ Preparar Actividad Nueva (ruta + línea de config, sin subir nada) ============
+  document.getElementById('btnPrepararActividad').addEventListener('click', ()=>{
+    const materia = document.getElementById('naMateria').value; // 'matematicas' o 'fisica'
+    const grado = document.getElementById('naGrado').value; // 'sexto' o 'decimo'
+    const trimestre = document.getElementById('naTrimestre').value; // '1','2','3'
+    const carpeta = document.getElementById('naCarpeta').value.trim();
+    const archivo = document.getElementById('naArchivo').value.trim();
+    const nombreActividad = document.getElementById('naNombreActividad').value.trim();
+
+    if(!carpeta || !archivo || !nombreActividad){
+      alert('Completa el nombre de la carpeta, el archivo, y el nombre de la actividad.');
+      return;
+    }
+    if(!archivo.toLowerCase().endsWith('.html')){
+      alert('El nombre del archivo debe terminar en .html');
+      return;
+    }
+
+    // Misma convención de carpetas que ya usan tus 6 talleres actuales:
+    // {materia}/{grado}/trimestre_{n}/{CARPETA}/{archivo}.html
+    const ruta = `${materia}/${grado}/trimestre_${trimestre}/${carpeta}/${archivo}`;
+    const nombreArchivoConfig = `config-trimestre${trimestre}.js`;
+    const lineaConfig = `_registrarActividad(${trimestre}, '${nombreActividad.replace(/'/g,"\\'")}', '${ruta}');`;
+
+    document.getElementById('naRutaCompleta').textContent = ruta;
+    document.getElementById('naNombreConfig').textContent = nombreArchivoConfig;
+    document.getElementById('naLineaConfig').textContent = lineaConfig;
+    document.getElementById('resultadoNuevaActividad').classList.remove('hidden');
+  });
+
+  document.getElementById('btnCopiarLinea').addEventListener('click', ()=>{
+    const texto = document.getElementById('naLineaConfig').textContent;
+    navigator.clipboard.writeText(texto).then(()=>{
+      const btn = document.getElementById('btnCopiarLinea');
+      const original = btn.textContent;
+      btn.textContent = '✅ Copiado';
+      setTimeout(()=>{ btn.textContent = original; }, 1500);
+    }).catch(()=>{
+      alert('No se pudo copiar automáticamente — selecciona el texto y cópialo manualmente.');
+    });
+  });
+
   document.getElementById('btnExportarInformeCompleto').addEventListener('click', async ()=>{
     const curso = document.getElementById('cursoExportarInforme').value;
     const trimestreSel = document.getElementById('trimestreExportarInforme').value; // 'activo', '1', '2' o '3'
@@ -1829,7 +2272,9 @@
         'Plan Mejora - Reportado', 'Plan Mejora - Entregó', 'Plan Mejora - Presentó', 'Plan Mejora - Aprobó',
         'Obs. Cognitiva', 'Obs. Procedimental', 'Obs. Actitudinal', 'Obs. General',
         'Clases Programadas', 'Clases Asistidas', 'Clases Excusadas', 'Retardos',
-        'Competencia a lograr'
+        'Competencia a lograr',
+        'Constancia de conformidad', 'Fecha de constancia',
+        'Nota necesaria en T3 para aprobar el año'
       );
 
       const filas = [encabezado];
@@ -1842,6 +2287,17 @@
           fila.push(n ? (n.actividad||'') : '', n && typeof n.nota==='number' ? n.nota : '', n && typeof n.aciertos==='number' ? n.aciertos : '', n && typeof n.tiempo==='number' ? n.tiempo : '');
         }
         const plan = f.planMejora || (trimestreSel==='1' || (trimestreSel==='activo' && !est.trimestre1) ? est.planMejoraT1 : est.planMejoraSubcomisionActual) || {};
+        // Constancia del trimestre que se está exportando (1, 2, 3, o el activo en curso)
+        const numeroConstancia = trimestreSel==='activo'
+          ? [1,2,3].find(n => !est[`trimestre${n}`]) || 3
+          : Number(trimestreSel);
+        const constancia = est[`conformidadTrimestre${numeroConstancia}`] || {};
+        // Nota necesaria en T3: solo tiene sentido calcularla si T1 y T2 ya existen
+        let notaNecesariaT3 = '';
+        if(est.trimestre1 && est.trimestre2){
+          const necesaria = (3.4*3) - est.trimestre1.nota - est.trimestre2.nota;
+          notaNecesariaT3 = necesaria <= 0 ? 'Ya aprobó el año' : (necesaria > 5 ? 'No alcanza (>5.0)' : necesaria.toFixed(1));
+        }
         fila.push(
           typeof f.notaDefinitiva==='number' ? f.notaDefinitiva : (typeof f.nota==='number' ? f.nota : ''),
           typeof f.autoevaluacion==='number' ? f.autoevaluacion : '',
@@ -1852,7 +2308,9 @@
           typeof f.clasesAsistidas==='number' ? f.clasesAsistidas : '',
           typeof f.clasesExcusadas==='number' ? f.clasesExcusadas : '',
           typeof f.retardos==='number' ? f.retardos : '',
-          f.competenciaALograr || est.competenciaALograr || ''
+          f.competenciaALograr || est.competenciaALograr || '',
+          constancia.aceptado ? 'Sí' : 'No', constancia.fecha || '',
+          notaNecesariaT3
         );
         filas.push(fila);
       }

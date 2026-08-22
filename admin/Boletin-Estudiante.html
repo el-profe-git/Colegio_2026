@@ -61,7 +61,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="https://el-profe-git.github.io/Colegio_2026/config-compartida.js"></script>
+<script src="../config-compartida.js"></script>
 </head>
 <body>
 
@@ -77,11 +77,11 @@
   <!-- ============ LOGIN ============ -->
   <div class="card" id="loginCard">
     <h2>Iniciar sesión</h2>
-    <p style="font-size:0.85rem; color:var(--slate);">Usa el correo y la contraseña que te indicó tu docente.</p>
-    <label>Correo</label>
-    <input type="email" id="inputCorreo" autocomplete="username">
-    <label>Contraseña</label>
-    <input type="password" id="inputClave" autocomplete="current-password">
+    <p style="font-size:0.85rem; color:var(--slate);">Usa el usuario y la clave que te indicó tu docente.</p>
+    <label>Usuario</label>
+    <input type="text" id="inputCorreo" autocomplete="username">
+    <label>Clave de ingreso</label>
+    <input type="text" inputmode="numeric" id="inputClave" autocomplete="current-password">
     <button class="btn" id="btnEntrar">Entrar</button>
     <div id="hintLogin"></div>
   </div>
@@ -115,6 +115,11 @@
       <div id="bloqueTrimestre1" class="bloque-trimestre"></div>
       <div id="bloqueTrimestre2" class="bloque-trimestre"></div>
       <div id="bloqueTrimestre3" class="bloque-trimestre"></div>
+    </div>
+
+    <div class="card hidden" id="cardCalculoT3">
+      <h2>🎯 ¿Qué nota necesitas en Trimestre 3?</h2>
+      <div id="textoCalculoT3" style="font-size:0.9rem;"></div>
     </div>
 
     <div class="card">
@@ -159,6 +164,28 @@
         <h2 style="font-size:0.95rem;">📝 Observaciones del docente</h2>
         <div id="observacionesBox" style="font-size:0.9rem; line-height:1.5;"></div>
       </div>
+    </div>
+
+    <div class="card hidden" id="cardProcesoFormativo">
+      <h2 style="font-size:0.95rem;">📝 Proceso Formativo — Hoy</h2>
+      <div id="temaHoyTxt" style="font-size:0.85rem; color:var(--slate); margin-bottom:10px;"></div>
+      <div id="formularioHoy"></div>
+      <div id="textoAutorreporteGuardado" class="hidden" style="font-size:0.82rem; color:var(--accent-dark); margin-top:8px; font-weight:700;"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:0.95rem;">📈 Resumen del proceso formativo</h2>
+      <div id="resumenProcesoTxt" style="font-size:0.85rem;"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:0.95rem;">✔️ Constancia de conformidad</h2>
+      <p style="font-size:0.85rem; color:var(--slate); margin-top:0;">
+        Este paso es opcional — no afecta tus notas ni tu proceso de ninguna forma. Solo deja
+        constancia de que revisaste tu información de este trimestre.
+      </p>
+      <button class="btn secondary" id="btnConstancia">Estoy de acuerdo con mis notas y certifico que mi proceso es genuino</button>
+      <div id="textoConstanciaGuardada" class="hidden" style="font-size:0.82rem; color:var(--accent-dark); margin-top:8px; font-weight:700;"></div>
     </div>
 
     <div class="card">
@@ -235,24 +262,23 @@
 
   document.getElementById('btnEntrar').addEventListener('click', async ()=>{
     const correo = document.getElementById('inputCorreo').value.trim().toLowerCase();
-    const clave = document.getElementById('inputClave').value;
+    const clave = document.getElementById('inputClave').value.trim();
     const hint = document.getElementById('hintLogin');
     hint.textContent = '';
-    if(!correo || !clave){ hint.textContent = 'Completa correo y contraseña.'; return; }
+    if(!correo || !clave){ hint.textContent = 'Completa usuario y clave.'; return; }
     document.getElementById('btnEntrar').disabled = true;
     try{
       try{
         await auth.signInWithEmailAndPassword(correo, clave);
       }catch(err){
         if(err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential'){
-          // primera vez que este correo entra: se crea la cuenta con esa misma clave
           await auth.createUserWithEmailAndPassword(correo, clave);
         }else{
           throw err;
         }
       }
     }catch(err){
-      hint.textContent = 'No se pudo iniciar sesión: correo o contraseña incorrectos.';
+      hint.textContent = 'No se pudo iniciar sesión: usuario o clave incorrectos.';
       document.getElementById('btnEntrar').disabled = false;
     }
   });
@@ -275,6 +301,7 @@
       const cfgSnap = await db.collection('config').doc('boletin-consulta').get();
       const habilitado = cfgSnap.exists ? (cfgSnap.data().habilitado !== false) : true;
       window.__alertaPlanMejoraT2Habilitada = cfgSnap.exists ? (cfgSnap.data().alertaPlanMejoraT2Habilitada !== false) : true;
+      window.__calculoNotaT3Habilitado = cfgSnap.exists ? (cfgSnap.data().calculoNotaT3Habilitado === true) : false;
       if(!habilitado){
         hint.textContent = 'La consulta del boletín está temporalmente deshabilitada por tu docente. Intenta más tarde.';
         document.getElementById('btnEntrar').disabled = false;
@@ -397,11 +424,165 @@
     }
 
     let yaEncontroActivo = false;
+    let numeroTrimestreActivoGlobal = 3; // por defecto, si los 3 ya están congelados
     for(const numero of [1,2,3]){
       const congelado = b[`trimestre${numero}`];
       const esElActivo = !congelado && !yaEncontroActivo;
-      if(esElActivo) yaEncontroActivo = true;
+      if(esElActivo){ yaEncontroActivo = true; numeroTrimestreActivoGlobal = numero; }
       renderBloqueTrimestre_(numero, congelado, esElActivo);
+    }
+
+    // ============ Proceso Formativo — Hoy (formulario adaptativo) ============
+    const HOY_ISO = new Date().toISOString().slice(0,10);
+    const ETIQUETAS_TIPO = {
+      taller: { campo:'trabajoClase', pregunta:'¿Trabajaste en el taller de hoy?' },
+      tarea: { campo:'hizoTarea', pregunta:'¿Hiciste la tarea de hoy?' },
+      tablero: { campo:'salioTablero', pregunta:'¿Saliste al tablero hoy?' },
+      participacion: { campo:'participo', pregunta:'¿Participaste en clase hoy?' }
+      // "evaluacion" y "otro" no generan pregunta de autorreporte (no aplica / se define manual)
+    };
+    (async function cargarProcesoFormativoHoy_(){
+      const cardProceso = document.getElementById('cardProcesoFormativo');
+      try{
+        const snapTema = await db.collection('temasDelDia').doc(`${b.curso}_${HOY_ISO}`).get();
+        if(!snapTema.exists){ return; } // hoy no hay nada configurado, la tarjeta se queda oculta
+        const temaHoy = snapTema.data();
+        const yaReportado = b.procesoFormativoDiario && b.procesoFormativoDiario[HOY_ISO];
+
+        cardProceso.classList.remove('hidden');
+        document.getElementById('temaHoyTxt').textContent = temaHoy.tema ? `Tema de hoy: ${temaHoy.tema}` : '';
+
+        const contenedor = document.getElementById('formularioHoy');
+        const preguntas = (temaHoy.tipos||[]).map(t=>ETIQUETAS_TIPO[t]).filter(Boolean);
+
+        if(yaReportado){
+          contenedor.innerHTML = '';
+          document.getElementById('textoAutorreporteGuardado').classList.remove('hidden');
+          document.getElementById('textoAutorreporteGuardado').textContent = 'Ya registraste tu proceso de hoy. ¡Gracias!';
+          return;
+        }
+        if(!preguntas.length){ return; } // tipo "evaluacion"/"otro" sin pregunta que autorreportar
+
+        contenedor.innerHTML = preguntas.map(p => `
+          <div style="margin-bottom:10px;">
+            <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:4px;">${p.pregunta}</label>
+            <select data-campo="${p.campo}" style="width:100%; padding:8px; border:1.5px solid var(--ink); border-radius:8px;">
+              <option value="Si">Sí</option>
+              <option value="AVeces">A veces / parcial</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+        `).join('') + '<button class="btn" id="btnEnviarProceso" style="margin-top:4px;">Enviar</button>';
+
+        document.getElementById('btnEnviarProceso').addEventListener('click', async ()=>{
+          const btn = document.getElementById('btnEnviarProceso');
+          btn.disabled = true;
+          const respuestas = {};
+          contenedor.querySelectorAll('select[data-campo]').forEach(sel=>{
+            respuestas[sel.dataset.campo] = sel.value;
+          });
+
+          // Validación contra la asistencia OFICIAL de hoy (si ya existe) — la del
+          // docente siempre manda; si hay contradicción, se registra como discrepancia
+          // y ese día no cuenta en el resumen automático.
+          const codigoAsistenciaHoy = (b.asistenciaDiaria || {})[HOY_ISO];
+          const faltoSegunDocente = codigoAsistenciaHoy === 'F' || codigoAsistenciaHoy === 'X';
+          const reportoAlgoPositivo = Object.values(respuestas).some(v => v === 'Si' || v === 'AVeces');
+          const esDiscrepancia = faltoSegunDocente && reportoAlgoPositivo;
+
+          const registro = { ...respuestas, fecha: HOY_ISO, discrepancia: esDiscrepancia };
+          try{
+            await db.collection('boletines').doc(b.ti).update({
+              [`procesoFormativoDiario.${HOY_ISO}`]: registro
+            });
+            if(esDiscrepancia){
+              await db.collection('discrepancias').add({
+                correo: b.correo, nombre: b.nombre, curso: b.curso, fecha: HOY_ISO,
+                detalle: `Autorreportó participación, pero la asistencia oficial de hoy dice que faltó.`
+              });
+            }
+            contenedor.innerHTML = '';
+            document.getElementById('textoAutorreporteGuardado').classList.remove('hidden');
+            document.getElementById('textoAutorreporteGuardado').textContent = 'Ya registraste tu proceso de hoy. ¡Gracias!';
+          }catch(err){
+            btn.disabled = false;
+            alert('No se pudo guardar: ' + err.message);
+          }
+        });
+      }catch(err){
+        cardProceso.classList.add('hidden');
+      }
+    })();
+
+    // ============ Resumen del proceso formativo (cuenta automática) ============
+    (function mostrarResumenProceso_(){
+      const reportes = b.procesoFormativoDiario || {};
+      const conteos = {};
+      for(const fecha in reportes){
+        const r = reportes[fecha];
+        if(r.discrepancia) continue; // no cuenta si quedó marcado como discrepancia
+        for(const campo in r){
+          if(campo==='fecha' || campo==='discrepancia') continue;
+          if(r[campo] === 'Si'){
+            conteos[campo] = (conteos[campo]||0) + 1;
+          }
+        }
+      }
+      const NOMBRES_CAMPO = { trabajoClase:'Trabajó en clase', hizoTarea:'Hizo la tarea', salioTablero:'Salió al tablero', participo:'Participó en clase' };
+      const filas = Object.keys(conteos).map(c => `<div style="display:flex; justify-content:space-between;"><span>${NOMBRES_CAMPO[c]||c}</span><b>${conteos[c]} veces</b></div>`);
+      document.getElementById('resumenProcesoTxt').innerHTML = filas.length ? filas.join('') : '<span style="color:var(--slate);">Todavía no hay registros de proceso formativo este trimestre.</span>';
+    })();
+
+    // ============ Constancia de conformidad (opcional, no bloquea nada) ============
+    const campoConstancia = `conformidadTrimestre${numeroTrimestreActivoGlobal}`;
+    const constanciaExistente = b[campoConstancia];
+    const btnConstancia = document.getElementById('btnConstancia');
+    const textoConstanciaGuardada = document.getElementById('textoConstanciaGuardada');
+    if(constanciaExistente && constanciaExistente.aceptado){
+      btnConstancia.disabled = true;
+      btnConstancia.textContent = 'Ya confirmaste esto ✓';
+      textoConstanciaGuardada.classList.remove('hidden');
+      textoConstanciaGuardada.textContent = `Confirmado el ${constanciaExistente.fecha}.`;
+    }else{
+      btnConstancia.disabled = false;
+      btnConstancia.textContent = 'Estoy de acuerdo con mis notas y certifico que mi proceso es genuino';
+      textoConstanciaGuardada.classList.add('hidden');
+      btnConstancia.onclick = async ()=>{
+        btnConstancia.disabled = true;
+        try{
+          const fechaHoy = new Date().toISOString().slice(0,10);
+          await db.collection('boletines').doc(b.ti).update({
+            [campoConstancia]: { aceptado: true, fecha: fechaHoy }
+          });
+          btnConstancia.textContent = 'Ya confirmaste esto ✓';
+          textoConstanciaGuardada.classList.remove('hidden');
+          textoConstanciaGuardada.textContent = `Confirmado el ${fechaHoy}.`;
+        }catch(err){
+          btnConstancia.disabled = false;
+          alert('No se pudo guardar: ' + err.message);
+        }
+      };
+    }
+
+    // ============ Calculadora: qué nota necesitas en Trimestre 3 ============
+    // Solo aparece si el docente la habilitó, estamos en T3 activo, y ya existen T1 y T2 congelados.
+    const cardCalculo = document.getElementById('cardCalculoT3');
+    const habilitadaCalculoT3 = window.__calculoNotaT3Habilitado === true;
+    if(habilitadaCalculoT3 && numeroTrimestreActivoGlobal===3 && b.trimestre1 && b.trimestre2){
+      const notaT1 = b.trimestre1.nota, notaT2 = b.trimestre2.nota;
+      const necesaria = (NOTA_MINIMA*3) - notaT1 - notaT2;
+      let mensaje;
+      if(necesaria <= 0){
+        mensaje = `Ya tienes el año aprobado matemáticamente, sin importar tu nota en Trimestre 3 (con Trimestre 1: ${notaT1.toFixed(1)} y Trimestre 2: ${notaT2.toFixed(1)}).`;
+      }else if(necesaria > 5){
+        mensaje = `⚠ Con tus notas actuales de Trimestre 1 (${notaT1.toFixed(1)}) y Trimestre 2 (${notaT2.toFixed(1)}), no es posible alcanzar el promedio mínimo (${NOTA_MINIMA}) solo con Trimestre 3 — necesitarías más de 5.0. Habla con tu docente cuanto antes.`;
+      }else{
+        mensaje = `Con Trimestre 1 (${notaT1.toFixed(1)}) y Trimestre 2 (${notaT2.toFixed(1)}), necesitas sacar <b>${necesaria.toFixed(1)}</b> o más en Trimestre 3 para que tu promedio anual quede en ${NOTA_MINIMA} o más.`;
+      }
+      cardCalculo.classList.remove('hidden');
+      document.getElementById('textoCalculoT3').innerHTML = mensaje;
+    }else{
+      cardCalculo.classList.add('hidden');
     }
 
     // Fecha límite para presentar actividades pendientes — actualiza esta fecha cada periodo.
