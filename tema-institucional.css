@@ -79,4 +79,4 @@ body{
 }
 @keyframes recuperoAparece{ from{ opacity:0; transform:scale(0.85); } to{ opacity:1; transform:scale(1); } }
 
-.logo-sistema{ height: 36px; }
+.logo-sistema{ height: 60px; }
