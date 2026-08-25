@@ -1,78 +1,111 @@
 /* ============================================================
    TEMA VISUAL — TALLERES Y ACTIVIDADES INTERACTIVAS
    Identidad para estudiantes: cercana, motivadora, con energía —
-   sin perder claridad (siguen siendo evaluaciones reales).
-   Misma base de marca que el tema institucional, con más calidez.
+   con los colores REALES del logo de Leo (azul, naranja, verde),
+   no aproximados. Acabado más pulido: hover, transiciones suaves,
+   feedback táctil al presionar.
    ============================================================ */
 
 :root{
-  --paper: #FBFAF5;
-  --ink: #1B2B29;
-  --slate: #5B6B72;
-  --accent: #2F7A6F;
-  --accent-dark: #1D4E47;
-  --sello: #D9A441;       /* dorado del logo de Leo — para aciertos y celebraciones */
-  --acierto: #DFF0E4;
-  --acierto-ink: #1E6B3A;
-  --error: #B3452C;
+  --azul-leo: #1D87C5;
+  --azul-leo-oscuro: #145E8C;
+  --naranja-leo: #EF7B13;
+  --naranja-leo-oscuro: #C6620A;
+  --verde-leo: #66982A;
+  --verde-leo-oscuro: #4E7620;
+  --azul-texto: #284A75;
+
+  --paper: #FBFAF6;
+  --ink: #21283A;
+  --slate: #64748B;
+  --accent: var(--azul-leo);
+  --accent-dark: var(--azul-leo-oscuro);
+  --sello: var(--naranja-leo);
+  --acierto: #EAF3DD;
+  --acierto-ink: var(--verde-leo-oscuro);
+  --error: #C6432E;
   --card-bg: #FFFFFF;
-  --card-border: #1B2B29;
+  --card-border: #21283A;
 
-  /* Tipografía — sans redondeada para títulos (amigable), misma sans de siempre para el resto */
   --fuente-titulo: "Nunito", "Segoe UI Rounded", -apple-system, sans-serif;
-  --fuente-datos: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --fuente-datos: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 
-  --radio-borde: 14px; /* mas redondeado que el institucional -- se siente mas amigable */
+  --radio-borde: 14px;
+  --transicion: 180ms cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+*{ box-sizing: border-box; }
 
 body{
   font-family: var(--fuente-datos);
   background: var(--paper);
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
 .card{
   background: var(--card-bg);
   border: 2px solid var(--card-border);
   border-radius: var(--radio-borde);
+  transition: box-shadow var(--transicion);
 }
 
 .card h2, h1{
   font-family: var(--fuente-titulo);
   font-weight: 800;
+  color: var(--azul-texto);
 }
 
 .btn{
-  background: var(--ink);
+  background: var(--azul-leo);
   color: #fff;
+  border: none;
   border-radius: 12px;
   font-weight: 700;
   font-family: var(--fuente-titulo);
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: transform var(--transicion), box-shadow var(--transicion), background var(--transicion), filter var(--transicion);
 }
-.btn.secondary{ background: var(--accent); }
+.btn:hover{ background: var(--azul-leo-oscuro); transform: translateY(-1px) scale(1.01); box-shadow: 0 4px 14px rgba(29,135,197,0.22); }
+.btn:active{ transform: translateY(0) scale(0.99); filter: brightness(0.95); }
+.btn:disabled{ opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn.secondary{ background: var(--verde-leo); }
+.btn.secondary:hover{ background: var(--verde-leo-oscuro); }
 
-.opcion-btn.elegida{
-  background: var(--accent);
-  border-color: var(--accent-dark);
+input, select, textarea{ transition: border-color var(--transicion), box-shadow var(--transicion); }
+input:focus, select:focus, textarea:focus{
+  outline: none; border-color: var(--azul-leo) !important;
+  box-shadow: 0 0 0 3px rgba(29,135,197,0.15);
 }
+
+.opcion-btn{ transition: transform var(--transicion), background var(--transicion), border-color var(--transicion); cursor: pointer; }
+.opcion-btn:hover{ transform: translateY(-1px); border-color: var(--azul-leo); }
+.opcion-btn.elegida{ background: var(--azul-leo); border-color: var(--azul-leo-oscuro); color: #fff; }
 .opcion-btn.correcta{ background: var(--acierto); border-color: var(--acierto-ink); color: var(--acierto-ink); }
 .opcion-btn.incorrecta{ background: #FCE4E4; border-color: var(--error); color: var(--error); }
 
-.nota-grande{
-  font-family: var(--fuente-titulo);
-  font-weight: 800;
-  color: var(--accent-dark);
+.nota-grande{ font-family: var(--fuente-titulo); font-weight: 800; color: var(--azul-texto); }
+
+/* Estado "pensando" — mismo utilitario que el tema institucional */
+.cargando::after{
+  content: ""; display: inline-block; width: 14px; height: 14px; margin-left: 8px;
+  border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%;
+  animation: girar 0.7s linear infinite; vertical-align: middle;
 }
+@keyframes girar{ to{ transform: rotate(360deg); } }
 
 /* ============================================================
-   Espacio reservado para la mascota Leo (animación en desarrollo).
-   Cuando esté lista, se inserta el elemento animado dentro de este
-   contenedor -- ya tiene tamaño y posición pensados, sin necesidad
-   de tocar el resto del taller.
-   Uso en HTML: <div class="zona-mascota"></div>
+   Zona de la mascota Leo — ahora con la animación real (video con
+   sonido). Se ve como una tarjeta redondeada, con controles nativos
+   por si el estudiante quiere volver a verla u oírla.
+   Uso: <div class="zona-mascota"><video ...>...</video></div>
    ============================================================ */
 .zona-mascota{
-  width: 64px; height: 64px;
-  margin: 0 auto 12px auto;
-  /* placeholder mientras se integra la animación real */
+  width: 100%; max-width: 320px;
+  margin: 0 auto 14px auto;
+  border-radius: var(--radio-borde);
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(33,40,58,0.12);
 }
+.zona-mascota video{ width: 100%; display: block; }
