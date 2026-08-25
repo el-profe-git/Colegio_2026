@@ -9,6 +9,11 @@
 window.WEBHOOK_AVISO_URL = 'https://script.google.com/macros/s/AKfycby2TmNsl-AHdy5sVoHj_H8H1QnWdUJllKCnPHcyzXMX32qDlmcqL4jexa8SYJgdJRnJ/exec';
 window.WEBHOOK_AVISO_TOKEN = 'AmoAmiFamilia2026';
 
+// Cloudflare Turnstile — protege el webhook de arriba. El Site Key es público,
+// no hay problema en que se vea. El Secret Key (la otra mitad) SOLO va en
+// Notificador.gs, nunca aquí.
+window.TURNSTILE_SITEKEY = '0x4AAAAAAEblG4XRuFv2uVaU';
+
 // La URL de la lanzadera se calcula sola, a partir de dónde se cargó ESTE
 // MISMO archivo — así funciona igual sin importar si la página la sirvió
 // Cloudflare o GitHub Pages, nunca depende de un servidor fijo.

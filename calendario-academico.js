@@ -1,6 +1,5 @@
 /* ============================================================
-   CALENDARIO ACADÉMICO — Colegio Compartir Suba (IED), Bogotá D.C.
-   Calendario A, Secretaría de Educación del Distrito (SED).
+   CALENDARIO ACADÉMICO — 
    El Panel lee este archivo para generar SOLO las fechas reales
    de clase de cada curso (día correcto, dentro del trimestre,
    sin contar festivos) — nunca hay que escribir fechas a mano.
