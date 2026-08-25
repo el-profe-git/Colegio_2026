@@ -92,6 +92,20 @@
   <!-- ============ REPORTE ============ -->
   <div class="hidden" id="reporte">
 
+    <div class="card" id="cardBienvenidaLeo" style="text-align:center; padding:14px;">
+      <video controls preload="metadata" style="width:100%; max-width:360px; border-radius:12px;">
+        <source src="../video1-bienvenida.mp4" type="video/mp4">
+      </video>
+      <div style="font-size:0.8rem; color:var(--slate); margin-top:6px;">🎬 Un mensaje de Leo para ti</div>
+    </div>
+
+    <div id="bannerVencidas" class="hidden" style="background:#FCE4E4; border:2px solid var(--bad); border-radius:10px; padding:12px; margin-bottom:10px; font-size:0.88rem; color:#7A1F0E; font-weight:700;">
+      ⛔ <span id="textoBannerVencidas"></span>
+    </div>
+    <div id="bannerPendientes" class="hidden" style="background:#FFF3CD; border:2px solid var(--warn); border-radius:10px; padding:12px; margin-bottom:10px; font-size:0.88rem; color:#7A5C00; font-weight:700;">
+      ⏰ <span id="textoBannerPendientes"></span>
+    </div>
+
     <div class="card" id="tarjetaEstudiante">
       <div id="nombreTxt" style="font-size:1.1rem; font-weight:800;"></div>
       <div id="datosTxt" style="font-size:0.85rem; color:var(--slate);"></div>
@@ -361,6 +375,36 @@
     document.getElementById('nombreTxt').textContent = b.nombre || '';
     document.getElementById('datosTxt').textContent = `TI ${b.ti} · Curso ${b.curso}`;
 
+    // Banners de actividades pendientes/vencidas — se calculan solos, comparando las
+    // actividades sin nota todavía contra las fechas límite guardadas por el docente.
+    (async function calcularBanners_(){
+      try{
+        const hoyIsoBanner = new Date().toISOString().slice(0,10);
+        const sinNota = (b.notas || []).filter(n => typeof n.nota !== 'number').map(n => n.actividad);
+        if(!sinNota.length) return;
+        const snapFechas = await db.collection('fechasLimite').get();
+        const fechasPorActividad = {};
+        snapFechas.forEach(doc => { fechasPorActividad[doc.id] = doc.data().fecha; });
+
+        const vencidas = [], pendientes = [];
+        for(const actividad of sinNota){
+          const fechaLimite = fechasPorActividad[actividad];
+          if(fechaLimite && fechaLimite < hoyIsoBanner){ vencidas.push(actividad); }
+          else{ pendientes.push(actividad); }
+        }
+        if(vencidas.length){
+          document.getElementById('bannerVencidas').classList.remove('hidden');
+          document.getElementById('textoBannerVencidas').textContent =
+            `Tienes ${vencidas.length} actividad(es) VENCIDA(S): ${vencidas.join(', ')}. Habla con tu docente cuanto antes.`;
+        }
+        if(pendientes.length){
+          document.getElementById('bannerPendientes').classList.remove('hidden');
+          document.getElementById('textoBannerPendientes').textContent =
+            `Tienes ${pendientes.length} actividad(es) pendiente(s): ${pendientes.join(', ')}.`;
+        }
+      }catch(err){ /* si falla, simplemente no se muestran los banners, sin romper el resto del boletín */ }
+    })();
+
     // Competencia a lograr del trimestre activo (el primero que aún no está congelado).
     // Viene de la hoja COMPETENCIAS del Excel, un solo texto por grado.
     const numeroTrimestreActivo = [1,2,3].find(n => !b[`trimestre${n}`]) || 3;
@@ -394,11 +438,13 @@
       if(congelado && typeof congelado.nota === 'number'){
         const anterior = (typeof congelado.notaAnterior === 'number')
           ? `<span style="color:var(--slate); font-weight:400;">${congelado.notaAnterior.toFixed(1)} → </span>` : '';
-        notaHtml = anterior + congelado.nota.toFixed(1) + (congelado.corregido ? ' <span class="badge badge-recupero">RECUPERÓ</span>' : '');
+        const claseNota = congelado.nota >= 3.4 ? 'nota-aprobada' : 'nota-en-riesgo';
+        notaHtml = anterior + `<span class="${claseNota}">${congelado.nota.toFixed(1)}</span>` + (congelado.corregido ? ' <span class="badge badge-recupero">RECUPERÓ</span>' : '');
         if(congelado.fecha) fechaHtml = `<span class="fecha-trimestre">Cerrado el ${congelado.fecha}</span>`;
         planData = congelado.planMejora || null;
       }else if(esElActivo && typeof b.notaDefinitiva === 'number'){
-        notaHtml = b.notaDefinitiva.toFixed(1) + ' <span style="font-size:0.7rem; color:var(--slate);">(en curso)</span>';
+        const claseNota = b.notaDefinitiva >= 3.4 ? 'nota-aprobada' : 'nota-en-riesgo';
+        notaHtml = `<span class="${claseNota}">${b.notaDefinitiva.toFixed(1)}</span> <span style="font-size:0.7rem; color:var(--slate); font-weight:400;">(en curso)</span>`;
         planData = b[CAMPO_PLAN_LIVE_POR_TRIMESTRE[numero]] || null;
       }
 
@@ -413,6 +459,25 @@
             <div style="display:flex; justify-content:space-between;"><span>Aprobó</span>${badgeSiNo_(planData.aprobo)}</div>
           </div>`;
       }
+
+      // Subcomisión y Plan de Mejora Integral — son propios de CADA trimestre desde que se
+      // crean (no dependen de si el trimestre ya está congelado o no, a diferencia del plan
+      // de mejora de arriba), por eso se leen directo con el número de este bloque.
+      function renderBloqueSeisCampos_(titulo, datos){
+        if(!datos) return '';
+        return `
+          <div style="font-size:0.82rem; margin-top:10px; padding-top:8px; border-top:1px dashed #E3E1D8;">
+            <div style="font-weight:700; margin-bottom:4px;">${titulo}</div>
+            <div style="display:flex; justify-content:space-between;"><span>Reportado</span>${badgeSiNo_(datos.reportado)}</div>
+            <div style="display:flex; justify-content:space-between;"><span>Informado</span>${badgeSiNo_(datos.informado)}</div>
+            <div style="display:flex; justify-content:space-between;"><span>Presentó evaluación</span>${badgeSiNo_(datos.presentoEvaluacion)}</div>
+            <div style="display:flex; justify-content:space-between;"><span>Presentó actividades</span>${badgeSiNo_(datos.presentoActividades)}</div>
+            ${typeof datos.notaProceso === 'number' ? `<div style="display:flex; justify-content:space-between;"><span>Nota del proceso</span><b>${datos.notaProceso.toFixed(1)}</b></div>` : ''}
+            ${datos.resultado ? `<div style="display:flex; justify-content:space-between;"><span>Resultado</span><b style="color:${datos.resultado==='Aprobado'?'var(--accent-dark)':'var(--bad)'};">${datos.resultado}</b></div>` : ''}
+          </div>`;
+      }
+      const subcomisionHtml = renderBloqueSeisCampos_(`Subcomisión ${numero}`, b[`subcomision${numero}`]);
+      const integralHtml = renderBloqueSeisCampos_(`Plan de Mejora Integral — Trimestre ${numero}`, b[`planMejoraIntegral${numero}`]);
 
       // Espacio reservado para personalización visual por trimestre (a futuro, desde el Panel):
       const fraseHtml = congelado && congelado.frase ? `<div class="frase-docente">${congelado.frase}</div>` : '';
@@ -435,7 +500,7 @@
         }
       }
 
-      cont.innerHTML = `<h3>Trimestre ${numero} ${fechaHtml}</h3><div style="text-align:right; font-size:1.1rem; font-weight:700;">${notaHtml}</div>${planHtml}${detalleHtml}${fraseHtml}${imagenHtml}`;
+      cont.innerHTML = `<h3>Trimestre ${numero} ${fechaHtml}</h3><div style="text-align:right; font-size:1.1rem; font-weight:700;">${notaHtml}</div>${planHtml}${subcomisionHtml}${integralHtml}${detalleHtml}${fraseHtml}${imagenHtml}`;
     }
 
     let yaEncontroActivo = false;
@@ -618,8 +683,8 @@
         : (n.actividad||'');
       if(typeof n.nota === 'number'){
         suma+=n.nota; cuenta++;
-        const malaNota = n.nota < 3.4;
-        celdaNota = `<span class="${malaNota?'nota-mala':''}">${n.nota}</span>`;
+        const aprobada = n.nota >= 3.4;
+        celdaNota = `<span class="${aprobada ? 'badge-nota-aprobada' : 'badge-nota-riesgo'}">${n.nota}</span>`;
         const aporte = totalActividades ? (n.nota * 0.70 / totalActividades) : 0;
         celdaAporte = aporte.toFixed(2);
       }else{

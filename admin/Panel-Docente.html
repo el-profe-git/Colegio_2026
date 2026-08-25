@@ -108,6 +108,7 @@
       <button class="btn-menu" data-vista="formativo">📝 Proceso Formativo</button>
       <button class="btn-menu" data-vista="correos">✉️ Correos y Acudientes</button>
       <button class="btn-menu" data-vista="planmejora">📋 Planes de Mejora</button>
+      <button class="btn-menu" data-vista="visor">🔍 Visor de Planilla</button>
       <button class="btn-menu" data-vista="nuevaactividad">📤 Preparar Actividad Nueva</button>
       <button class="btn-menu" data-vista="actividades">⚙️ Actividades</button>
       <button class="btn-menu" data-vista="resultados">📋 Resultados</button>
@@ -281,6 +282,18 @@
           <option value="">Selecciona un curso…</option>
           <option value="602">602</option><option value="603">603</option>
           <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <select id="filtroMesAsistencia">
+          <option value="">Todo el trimestre</option>
+          <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>
+          <option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option>
+          <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
+          <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
+        </select>
+        <select id="filtroSemanaAsistencia">
+          <option value="">Todo el mes</option>
+          <option value="1">Semana 1</option><option value="2">Semana 2</option>
+          <option value="3">Semana 3</option><option value="4">Semana 4</option><option value="5">Semana 5</option>
         </select>
         <button class="btn secondary" id="btnCargarAsistencia">🔄 Cargar cuadrícula</button>
       </div>
@@ -472,6 +485,40 @@
     </div>
 
     </div><!-- /vista-planmejora -->
+    <div class="vista-panel" data-vista="visor">
+
+    <div class="card">
+      <h2>🔍 Visor de Planilla</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Organizado por secciones — filtra para ver solo Heteroevaluación (con versión/tiempo/aciertos
+        por nota) o solo Actitudinal (autoevaluación/coevaluación), o todo junto.
+      </div>
+      <div class="fila">
+        <select id="vpCurso">
+          <option value="602">602 — Matemáticas</option><option value="603">603 — Matemáticas</option>
+          <option value="1001">1001 — Física</option><option value="1002">1002 — Física</option><option value="1003">1003 — Física</option>
+        </select>
+        <select id="vpTrimestre">
+          <option value="activo">Trimestre en curso</option>
+          <option value="1">Trimestre 1</option><option value="2">Trimestre 2</option><option value="3">Trimestre 3</option>
+        </select>
+        <select id="vpSeccion">
+          <option value="todo">Todo</option>
+          <option value="heteroevaluacion">Solo Heteroevaluación</option>
+          <option value="actitudinal">Solo Actitudinal</option>
+        </select>
+        <button class="btn secondary" id="btnCargarVisor">🔄 Cargar</button>
+      </div>
+      <div id="resumenVisor" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
+      <div class="tabla-wrap">
+        <table id="tablaVisor" style="font-size:0.78rem;">
+          <thead><tr id="filaEncabezadoVisor"><th>Nombre</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    </div><!-- /vista-visor -->
     <div class="vista-panel" data-vista="nuevaactividad">
 
     <div class="card">
@@ -499,6 +546,22 @@
       <div class="campo" style="margin-bottom:10px;">
         <label>Nombre EXACTO de la actividad, como aparece en la planilla de notas</label>
         <input type="text" id="naNombreActividad" style="width:100%;">
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Categoría de la actividad</label>
+          <select id="naCategoria">
+            <option value="heteroevaluacion">Heteroevaluación</option>
+            <option value="actitudinal">Actitudinal</option>
+          </select>
+        </div>
+        <div class="campo" id="naSubtiposHetero"><label>Corresponde a</label>
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naCognitivo" checked> Cognitivo</label>
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naProcedimental"> Procedimental</label>
+        </div>
+        <div class="campo hidden" id="naSubtiposActitudinal"><label>Corresponde a</label>
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naAutoevaluacion" checked> Autoevaluación</label>
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naCoevaluacion"> Coevaluación</label>
+        </div>
       </div>
       <button class="btn" id="btnPrepararActividad">📋 Generar instrucciones</button>
 
@@ -1888,7 +1951,24 @@
 
     const resultado = generarFechasDeClase_(curso, trimestreAsistenciaActual);
     if(resultado.error){ resumen.textContent = '⚠ ' + resultado.error; return; }
-    const fechas = resultado.fechas;
+    let fechas = resultado.fechas;
+
+    // Filtro por mes: compara el mes (0-11) de cada fecha AAAA-MM-DD.
+    const mesSeleccionado = document.getElementById('filtroMesAsistencia').value;
+    if(mesSeleccionado !== ''){
+      fechas = fechas.filter(f => (new Date(f+'T00:00:00').getMonth()) === Number(mesSeleccionado));
+    }
+    // Filtro por semana del mes: semana 1 = días 1-7, semana 2 = 8-14, etc.
+    const semanaSeleccionada = document.getElementById('filtroSemanaAsistencia').value;
+    if(semanaSeleccionada !== ''){
+      const inicioDia = (Number(semanaSeleccionada)-1)*7 + 1;
+      const finDia = inicioDia + 6;
+      fechas = fechas.filter(f => {
+        const dia = Number(f.slice(8,10));
+        return dia >= inicioDia && dia <= finDia;
+      });
+    }
+
     if(!fechas.length){ resumen.textContent = 'No se generó ninguna fecha de clase con la configuración actual — revisa el calendario.'; return; }
 
     resumen.textContent = `Cargando ${fechas.length} fechas de clase…`;
@@ -2385,13 +2465,20 @@
   });
 
   // ============ Preparar Actividad Nueva (ruta + línea de config, sin subir nada) ============
-  document.getElementById('btnPrepararActividad').addEventListener('click', ()=>{
+  document.getElementById('naCategoria').addEventListener('change', ()=>{
+    const esHetero = document.getElementById('naCategoria').value === 'heteroevaluacion';
+    document.getElementById('naSubtiposHetero').classList.toggle('hidden', !esHetero);
+    document.getElementById('naSubtiposActitudinal').classList.toggle('hidden', esHetero);
+  });
+
+  document.getElementById('btnPrepararActividad').addEventListener('click', async ()=>{
     const materia = document.getElementById('naMateria').value; // 'matematicas' o 'fisica'
     const grado = document.getElementById('naGrado').value; // 'sexto' o 'decimo'
     const trimestre = document.getElementById('naTrimestre').value; // '1','2','3'
     const carpeta = document.getElementById('naCarpeta').value.trim();
     const archivo = document.getElementById('naArchivo').value.trim();
     const nombreActividad = document.getElementById('naNombreActividad').value.trim();
+    const categoria = document.getElementById('naCategoria').value; // 'heteroevaluacion' o 'actitudinal'
 
     if(!carpeta || !archivo || !nombreActividad){
       alert('Completa el nombre de la carpeta, el archivo, y el nombre de la actividad.');
@@ -2407,6 +2494,19 @@
     const ruta = `${materia}/${grado}/trimestre_${trimestre}/${carpeta}/${archivo}`;
     const nombreArchivoConfig = `config-trimestre${trimestre}.js`;
     const lineaConfig = `_registrarActividad(${trimestre}, '${nombreActividad.replace(/'/g,"\\'")}', '${ruta}');`;
+
+    // Guarda la categoría de la actividad — el visor de planilla la usa después para
+    // filtrar/agrupar por sección (Heteroevaluación/Actitudinal, Cognitivo/Procedimental, etc.)
+    const subtipos = categoria === 'heteroevaluacion'
+      ? { cognitivo: document.getElementById('naCognitivo').checked, procedimental: document.getElementById('naProcedimental').checked }
+      : { autoevaluacion: document.getElementById('naAutoevaluacion').checked, coevaluacion: document.getElementById('naCoevaluacion').checked };
+    try{
+      await db.collection('categoriasActividad').doc(nombreActividad).set({
+        nombre: nombreActividad, categoria, subtipos, curso: null, trimestre: Number(trimestre)
+      });
+    }catch(err){
+      alert('La ruta se generó bien, pero no se pudo guardar la categoría: ' + err.message);
+    }
 
     document.getElementById('naRutaCompleta').textContent = ruta;
     document.getElementById('naNombreConfig').textContent = nombreArchivoConfig;
@@ -2424,6 +2524,135 @@
     }).catch(()=>{
       alert('No se pudo copiar automáticamente — selecciona el texto y cópialo manualmente.');
     });
+  });
+
+  // ============ Visor de Planilla (por secciones: Heteroevaluación / Actitudinal) ============
+  document.getElementById('btnCargarVisor').addEventListener('click', async ()=>{
+    const curso = document.getElementById('vpCurso').value;
+    const trimestreSel = document.getElementById('vpTrimestre').value; // 'activo','1','2','3'
+    const seccion = document.getElementById('vpSeccion').value; // 'todo','heteroevaluacion','actitudinal'
+    const resumen = document.getElementById('resumenVisor');
+    const filaEnc = document.getElementById('filaEncabezadoVisor');
+    const tbody = document.querySelector('#tablaVisor tbody');
+    filaEnc.innerHTML = '<th>Nombre</th>';
+    tbody.innerHTML = '';
+    resumen.textContent = 'Cargando…';
+    try{
+      // 1) Categorías de actividad conocidas, para filtrar por sección.
+      const snapCat = await db.collection('categoriasActividad').get();
+      const categorias = {};
+      snapCat.forEach(doc => { categorias[doc.id] = doc.data(); });
+
+      // 2) Estudiantes del curso, con su fuente correcta según el trimestre elegido.
+      const snap = await db.collection('boletines').where('curso','==', curso).get();
+      const estudiantes = [];
+      snap.forEach(doc => estudiantes.push({ id: doc.id, ...doc.data() }));
+      estudiantes.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+
+      function fuenteDe(est){
+        if(trimestreSel === 'activo') return est;
+        return est[`trimestre${trimestreSel}`] || est;
+      }
+
+      // 3) Determinar qué actividades (columnas) mostrar, según la sección elegida.
+      //    Una actividad SIN categoría guardada se trata como Heteroevaluación por defecto
+      //    (es el comportamiento de siempre, antes de que existiera esta categorización).
+      const nombresActividad = new Set();
+      estudiantes.forEach(est => {
+        (fuenteDe(est).notas || []).forEach(n => { if(n.actividad) nombresActividad.add(n.actividad); });
+      });
+      const actividadesAMostrar = [...nombresActividad].filter(nombre => {
+        if(seccion === 'todo') return true;
+        const cat = categorias[nombre] ? categorias[nombre].categoria : 'heteroevaluacion';
+        return cat === seccion;
+      });
+
+      const mostrarHetero = seccion === 'todo' || seccion === 'heteroevaluacion';
+      const mostrarActitudinal = seccion === 'todo' || seccion === 'actitudinal';
+
+      // 4) Encabezados
+      if(mostrarHetero){
+        actividadesAMostrar.forEach(nombre => {
+          const th = document.createElement('th');
+          th.innerHTML = `${nombre}<br><span style="font-weight:400; font-size:0.7rem;">(nota / versión / tiempo / aciertos)</span>`;
+          filaEnc.appendChild(th);
+        });
+      }
+      if(mostrarActitudinal){
+        filaEnc.innerHTML += '<th>Autoevaluación</th><th>Coevaluación</th>';
+      }
+
+      // 5) Filas
+      for(const est of estudiantes){
+        const ti = est.ti || est.id;
+        const yaCongelado = trimestreSel !== 'activo' && !!est[`trimestre${trimestreSel}`];
+        const tr = document.createElement('tr');
+        let fila = `<td>${est.nombre||''}</td>`;
+        if(mostrarHetero){
+          for(const nombreAct of actividadesAMostrar){
+            const n = (fuenteDe(est).notas||[]).find(x => x.actividad === nombreAct);
+            fila += `<td style="text-align:center;">
+              <input type="number" step="0.1" min="0" max="5" class="visorNotaEditable" style="width:52px; text-align:center;"
+                data-ti="${ti}" data-actividad="${nombreAct.replace(/"/g,'&quot;')}" data-congelado="${yaCongelado}"
+                value="${n && typeof n.nota==='number' ? n.nota : ''}">
+              <br><span style="font-size:0.68rem; color:var(--slate);">${n?.version||'—'} / ${n?.tiempo??'—'} / ${n?.aciertos??'—'}</span>
+            </td>`;
+          }
+        }
+        if(mostrarActitudinal){
+          const fuente = fuenteDe(est);
+          fila += `<td style="text-align:center;"><input type="number" step="0.1" min="0" max="5" class="visorCampoEditable" style="width:52px; text-align:center;" data-ti="${ti}" data-campo="autoevaluacion" data-congelado="${yaCongelado}" value="${typeof fuente.autoevaluacion==='number' ? fuente.autoevaluacion : ''}"></td>`;
+          fila += `<td style="text-align:center;"><input type="number" step="0.1" min="0" max="5" class="visorCampoEditable" style="width:52px; text-align:center;" data-ti="${ti}" data-campo="coevaluacion" data-congelado="${yaCongelado}" value="${typeof fuente.coevaluacion==='number' ? fuente.coevaluacion : ''}"></td>`;
+        }
+        tr.innerHTML = fila;
+        tbody.appendChild(tr);
+      }
+
+      // Guardado directo al salir de cada campo — sin pasar por Excel. Si el trimestre ya
+      // está congelado, escribe dentro de su historial; si no, en los campos en vivo.
+      tbody.querySelectorAll('.visorNotaEditable').forEach(input=>{
+        input.addEventListener('blur', async ()=>{
+          const ti = input.dataset.ti, actividad = input.dataset.actividad, congelado = input.dataset.congelado === 'true';
+          const valor = input.value === '' ? null : parseFloat(input.value);
+          try{
+            const docRef = db.collection('boletines').doc(ti);
+            const doc = await docRef.get();
+            const datos = doc.data();
+            const fuenteActual = congelado ? (datos[`trimestre${trimestreSel}`] || {}) : datos;
+            const notasActuales = (fuenteActual.notas || []).slice();
+            const idx = notasActuales.findIndex(n => n.actividad === actividad);
+            if(idx >= 0){ notasActuales[idx] = { ...notasActuales[idx], nota: valor }; }
+            else{ notasActuales.push({ actividad, nota: valor }); }
+            const campoDestino = congelado ? `trimestre${trimestreSel}.notas` : 'notas';
+            await docRef.update({ [campoDestino]: notasActuales });
+            input.style.background = '#DFF0E4';
+            setTimeout(()=>{ input.style.background=''; }, 600);
+          }catch(err){
+            input.style.background = '#FCE4E4';
+            alert('No se pudo guardar: ' + err.message);
+          }
+        });
+      });
+      tbody.querySelectorAll('.visorCampoEditable').forEach(input=>{
+        input.addEventListener('blur', async ()=>{
+          const ti = input.dataset.ti, campo = input.dataset.campo, congelado = input.dataset.congelado === 'true';
+          const valor = input.value === '' ? null : parseFloat(input.value);
+          try{
+            const campoDestino = congelado ? `trimestre${trimestreSel}.${campo}` : campo;
+            await db.collection('boletines').doc(ti).update({ [campoDestino]: valor });
+            input.style.background = '#DFF0E4';
+            setTimeout(()=>{ input.style.background=''; }, 600);
+          }catch(err){
+            input.style.background = '#FCE4E4';
+            alert('No se pudo guardar: ' + err.message);
+          }
+        });
+      });
+
+      resumen.textContent = `${estudiantes.length} estudiante(s), ${mostrarHetero ? actividadesAMostrar.length + ' actividad(es)' : 'sin heteroevaluación'}.`;
+    }catch(err){
+      resumen.textContent = 'Error al cargar: ' + err.message;
+    }
   });
 
   document.getElementById('btnExportarInformeCompleto').addEventListener('click', async ()=>{
