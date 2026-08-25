@@ -70,7 +70,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="https://el-profe-git.github.io/Colegio_2026/config-compartida.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="../../../../config-compartida.js"></script>
 </head>
 <body>
 
@@ -79,6 +80,7 @@
   <span id="progresoTxt"></span>
   <span id="timerTxt"></span>
   <button id="btnAvisar" style="font-size:0.75rem;padding:6px 10px;border-radius:6px;border:1.5px solid var(--bad);background:transparent;color:var(--bad);font-weight:700;cursor:pointer;">⚠️ Avisar al profesor</button>
+  <div id="turnstileContenedor" style="display:none;"></div>
   <span id="versionTxt" style="font-size:0.65rem;color:var(--slate);"></span>
 </header>
 
@@ -94,8 +96,11 @@
     </div>
     <h2>Iniciar sesión</h2>
     <p style="font-size:0.9rem;color:var(--slate);">Usa tu correo institucional y tu número de documento (TI) como contraseña.</p>
-    <label>Correo</label>
-    <input type="email" id="loginCorreo" autocomplete="username">
+    <label>Nombre completo y apellidos</label>
+    <div style="display:flex; align-items:stretch; margin-bottom:12px;">
+      <input type="text" id="loginCorreo" autocomplete="username" style="flex:1; border-top-right-radius:0; border-bottom-right-radius:0; border-right:none; margin-bottom:0;">
+      <span style="display:flex; align-items:center; padding:0 10px; background:#eee; border:1.5px solid var(--ink); border-left:none; border-top-right-radius:8px; border-bottom-right-radius:8px; font-size:0.82rem; color:var(--slate); white-space:nowrap;">@leoteexplica.com</span>
+    </div>
     <label>Documento (TI)</label>
     <input type="password" id="loginClave" autocomplete="current-password">
     <button class="btn" id="btnLogin">Entrar</button>
@@ -169,7 +174,16 @@
 /* ============================================================
    Firebase — reemplaza a Code.gs / Apps Script por completo
    ============================================================ */
-const DOMINIO_INSTITUCIONAL = 'colcompartirsubaied.edu.co';
+// Misma normalización EXACTA que usa el Panel al generar el usuario (sin tildes,
+// sin espacios, sin símbolos, sin puntos) — así no importa cómo el estudiante
+// escriba su nombre, siempre coincide con lo que se generó al subir la planilla.
+function normalizarNombreParaUsuario_(texto){
+  return String(texto||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g,'')
+    .trim().replace(/\s+/g,'');
+}
 const VERSION_CODIGO = 'matematicas-enteros · 2026-08-13 (fix iconos pequeños)';
 
 // ============================================================
@@ -215,14 +229,12 @@ if(document.readyState !== 'loading'){
 }
 
 document.getElementById('btnLogin').addEventListener('click', async ()=>{
-  const correo = document.getElementById('loginCorreo').value.trim().toLowerCase();
+  const nombreEscrito = document.getElementById('loginCorreo').value;
+  const correo = normalizarNombreParaUsuario_(nombreEscrito) + '@leoteexplica.com';
   const clave = document.getElementById('loginClave').value;
   const hint = document.getElementById('loginHint');
   hint.textContent = '';
-  if(!correo || !clave){ hint.textContent = 'Completa correo y documento.'; return; }
-  if(!correo.endsWith('@'+DOMINIO_INSTITUCIONAL)){
-    hint.textContent = 'Debes entrar con tu cuenta institucional (@'+DOMINIO_INSTITUCIONAL+').'; return;
-  }
+  if(!nombreEscrito.trim() || !clave){ hint.textContent = 'Completa tu nombre completo y tu documento.'; return; }
   document.getElementById('btnLogin').disabled = true;
   try{
     try{
@@ -688,12 +700,29 @@ const UNIT = 34;
   const WEBHOOK_AVISO_URL = window.WEBHOOK_AVISO_URL || '';
   const WEBHOOK_AVISO_TOKEN = window.WEBHOOK_AVISO_TOKEN || '';
 
+  function obtenerTokenTurnstile_(){
+    // Genera un token de un solo uso, justo antes de usarlo (no antes, porque
+    // vence en pocos minutos). Si Turnstile todavía no cargó, sigue sin token
+    // (Notificador.gs lo rechazará solo, no se cae la página del estudiante).
+    return new Promise((resolve)=>{
+      if(typeof turnstile === 'undefined' || !window.TURNSTILE_SITEKEY){ resolve(''); return; }
+      try{
+        turnstile.render('#turnstileContenedor', {
+          sitekey: window.TURNSTILE_SITEKEY,
+          callback: (token)=> resolve(token),
+          'error-callback': ()=> resolve('')
+        });
+      }catch(e){ resolve(''); }
+    });
+  }
+
   document.getElementById('btnAvisar').addEventListener('click', async ()=>{
     const btn = document.getElementById('btnAvisar');
     btn.disabled = true; btn.textContent = 'Avisando...';
     const numeroPregunta = (SES ? SES.indiceActual+1 : 0);
     const intentoId = (SES ? SES.intentoId : 'sin-intento');
     try{
+      const turnstileToken = await obtenerTokenTurnstile_();
       await db.collection('errores').add({
         fecha: firebase.firestore.FieldValue.serverTimestamp(),
         intentoId, correo: SERVER.correo, numeroPregunta,
@@ -702,7 +731,7 @@ const UNIT = 34;
       if(WEBHOOK_AVISO_URL){
         fetch(WEBHOOK_AVISO_URL, {
           method: 'POST',
-          body: JSON.stringify({ token: WEBHOOK_AVISO_TOKEN, correo: SERVER.correo, numeroPregunta, intentoId, comentario:'' })
+          body: JSON.stringify({ token: WEBHOOK_AVISO_TOKEN, turnstileToken, correo: SERVER.correo, numeroPregunta, intentoId, comentario:'' })
         }).catch(()=>{}); // si el correo falla, igual ya quedó guardado en Firestore
       }
       btn.textContent = '✅ Avisado';
