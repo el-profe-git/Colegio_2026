@@ -244,6 +244,10 @@
           <option value="602">602</option><option value="603">603</option>
           <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
         </select>
+        <select id="filtroTrimestreAutoeval">
+          <option value="activo">Trimestre en curso</option>
+          <option value="1">Trimestre 1</option><option value="2">Trimestre 2</option><option value="3">Trimestre 3</option>
+        </select>
         <button class="btn secondary" id="btnCargarAutoeval">🔄 Consultar</button>
         <button class="btn secondary" id="btnExportarAutoeval">📥 Exportar CSV</button>
       </div>
@@ -345,6 +349,11 @@
           </select>
         </div>
         <div class="campo"><label>Fecha</label><input type="date" id="temaFecha"></div>
+        <div class="campo"><label>Trimestre</label>
+          <select id="temaTrimestre">
+            <option value="1">Trimestre 1</option><option value="2" selected>Trimestre 2</option><option value="3">Trimestre 3</option>
+          </select>
+        </div>
       </div>
       <div class="campo" style="margin-bottom:10px;">
         <label>Tipo de clase (marca todas las que apliquen)</label>
@@ -436,7 +445,10 @@
         automáticos (Notificador.gs) sabe cuándo avisar. Ver el archivo aparte para instalarlo.
       </div>
       <div class="fila">
-        <div class="campo"><label>Nombre EXACTO de la actividad (como en la planilla)</label><input type="text" id="caducidadActividad" style="width:280px;"></div>
+        <div class="campo"><label>Actividad (de las ya registradas en "Preparar Actividad Nueva")</label>
+          <select id="caducidadActividad" style="width:280px;"><option value="">Cargando…</option></select>
+          <input type="text" id="caducidadActividadManual" class="hidden" style="width:280px; margin-top:4px;" placeholder="Escribe el nombre exacto">
+        </div>
         <div class="campo"><label>Fecha límite</label><input type="date" id="caducidadFecha"></div>
       </div>
       <button class="btn" id="btnGuardarCaducidad">💾 Guardar fecha límite</button>
@@ -506,6 +518,7 @@
           <option value="todo">Todo</option>
           <option value="heteroevaluacion">Solo Heteroevaluación</option>
           <option value="actitudinal">Solo Actitudinal</option>
+          <option value="formativo">Solo Proceso Formativo</option>
         </select>
         <button class="btn secondary" id="btnCargarVisor">🔄 Cargar</button>
       </div>
@@ -581,6 +594,13 @@
     <div class="card">
       <h2>⚙️ Configuración — por actividad</h2>
       <div class="fila">
+        <div class="campo">
+          <label>Filtrar por trimestre</label>
+          <select id="filtroTrimestreActividadConfig">
+            <option value="">Todos</option>
+            <option value="1">Trimestre 1</option><option value="2">Trimestre 2</option><option value="3">Trimestre 3</option>
+          </select>
+        </div>
         <div class="campo">
           <label>Actividad a configurar</label>
           <select id="selectActividadConfig" style="min-width:260px;"></select>
@@ -1357,14 +1377,29 @@
   /* ============================================================
      CATEGORÍA 1 — configuración por actividad
      ============================================================ */
-  function poblarSelectorActividades(){
+  let categoriasActividadCache_ = null;
+  async function poblarSelectorActividades(){
     const sel = document.getElementById('selectActividadConfig');
     const actual = sel.value;
-    const nombres = Array.from(new Set(todosLosIntentos.map(x=>x.actividad).filter(Boolean))).sort();
+    const trimestreFiltro = document.getElementById('filtroTrimestreActividadConfig').value;
+    let nombres = Array.from(new Set(todosLosIntentos.map(x=>x.actividad).filter(Boolean))).sort();
+    if(trimestreFiltro){
+      if(!categoriasActividadCache_){
+        categoriasActividadCache_ = {};
+        try{
+          const snap = await db.collection('categoriasActividad').get();
+          snap.forEach(doc => { categoriasActividadCache_[doc.id] = doc.data(); });
+        }catch(err){ /* si falla, el filtro simplemente no excluye nada */ }
+      }
+      // Una actividad sin categoría registrada (viejas, de antes de esta función) se
+      // deja pasar siempre, para no "esconderla" solo por no tener trimestre guardado.
+      nombres = nombres.filter(n => !categoriasActividadCache_[n] || Number(categoriasActividadCache_[n].trimestre) === Number(trimestreFiltro));
+    }
     sel.innerHTML = nombres.map(n=>`<option value="${n}">${n}</option>`).join('') || '<option value="">(sin actividades registradas aún)</option>';
     if(nombres.includes(actual)) sel.value = actual;
     cargarConfigDeActividad();
   }
+  document.getElementById('filtroTrimestreActividadConfig').addEventListener('change', poblarSelectorActividades);
 
   async function cargarConfigDeActividad(){
     const nombreActividad = document.getElementById('selectActividadConfig').value;
@@ -1798,12 +1833,16 @@
     tbody.innerHTML = '';
     try{
       const cursoFiltro = document.getElementById('filtroCursoAutoeval').value;
+      const trimestreFiltro = document.getElementById('filtroTrimestreAutoeval').value; // 'activo','1','2','3'
       const snap = await db.collection('boletines').get();
       let filas = [];
       snap.forEach(doc=>{
         const b = doc.data();
         if(cursoFiltro && String(b.curso)!==cursoFiltro) return;
-        filas.push(b);
+        // Si se pidió un trimestre específico y ya está congelado, se usa su historial;
+        // si no, se cae de vuelta a los campos en vivo (igual patrón que el resto del Panel).
+        const fuente = (trimestreFiltro !== 'activo' && b[`trimestre${trimestreFiltro}`]) ? b[`trimestre${trimestreFiltro}`] : b;
+        filas.push({ ...fuente, nombre: b.nombre, curso: b.curso, ti: b.ti });
       });
       filas.sort((a,b)=> String(a.curso||'').localeCompare(String(b.curso||'')) || (a.nombre||'').localeCompare(b.nombre||''));
       ultimaConsultaAutoeval = filas;
@@ -2235,6 +2274,7 @@
   document.getElementById('btnGuardarTema').addEventListener('click', async ()=>{
     const curso = document.getElementById('temaCurso').value;
     const fecha = document.getElementById('temaFecha').value;
+    const trimestre = Number(document.getElementById('temaTrimestre').value);
     const tema = document.getElementById('temaTexto').value.trim();
     const tipos = Array.from(document.querySelectorAll('.chkTipoClase:checked')).map(c=>c.value);
     const hint = document.getElementById('hintTema');
@@ -2243,9 +2283,9 @@
     hint.textContent = 'Guardando…';
     try{
       await db.collection('temasDelDia').doc(`${curso}_${fecha}`).set({
-        curso, fecha, tema, tipos, actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        curso, fecha, trimestre, tema, tipos, actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
       });
-      hint.textContent = `✅ Guardado para el curso ${curso}, ${fecha}.`;
+      hint.textContent = `✅ Guardado para el curso ${curso}, Trimestre ${trimestre}, ${fecha}.`;
     }catch(err){
       hint.textContent = 'Error: ' + err.message;
     }
@@ -2348,8 +2388,35 @@
   });
 
   // ============ Fecha de caducidad por actividad ============
+  // Carga las actividades ya registradas en "Preparar Actividad Nueva" para elegirlas
+  // de una lista, en vez de escribir el nombre a mano (evita errores de tecleo).
+  async function cargarActividadesRegistradas_(){
+    const select = document.getElementById('caducidadActividad');
+    try{
+      const snap = await db.collection('categoriasActividad').get();
+      const opciones = ['<option value="">Selecciona…</option>'];
+      snap.forEach(doc => {
+        const d = doc.data();
+        opciones.push(`<option value="${doc.id}">${doc.id} (${d.categoria === 'actitudinal' ? 'Actitudinal' : 'Heteroevaluación'})</option>`);
+      });
+      opciones.push('<option value="__otro__">Otra (escribir el nombre manualmente)</option>');
+      select.innerHTML = opciones.join('');
+    }catch(err){
+      select.innerHTML = '<option value="__otro__">Otra (escribir el nombre manualmente)</option>';
+    }
+  }
+  cargarActividadesRegistradas_();
+
+  document.getElementById('caducidadActividad').addEventListener('change', ()=>{
+    const esManual = document.getElementById('caducidadActividad').value === '__otro__';
+    document.getElementById('caducidadActividadManual').classList.toggle('hidden', !esManual);
+  });
+
   document.getElementById('btnGuardarCaducidad').addEventListener('click', async ()=>{
-    const actividad = document.getElementById('caducidadActividad').value.trim();
+    const seleccion = document.getElementById('caducidadActividad').value;
+    const actividad = seleccion === '__otro__'
+      ? document.getElementById('caducidadActividadManual').value.trim()
+      : seleccion;
     const fecha = document.getElementById('caducidadFecha').value;
     const hint = document.getElementById('hintCaducidad');
     if(!actividad || !fecha){ hint.textContent = 'Completa el nombre de la actividad y la fecha.'; return; }
@@ -2569,6 +2636,9 @@
 
       const mostrarHetero = seccion === 'todo' || seccion === 'heteroevaluacion';
       const mostrarActitudinal = seccion === 'todo' || seccion === 'actitudinal';
+      const mostrarFormativo = seccion === 'formativo'; // aparte, porque no comparte columnas con las otras 2
+
+      const NOMBRES_CAMPO_FORMATIVO = { trabajoClase:'Trabajó en clase', hizoTarea:'Hizo la tarea', salioTablero:'Salió al tablero', participo:'Participó en clase' };
 
       // 4) Encabezados
       if(mostrarHetero){
@@ -2580,6 +2650,9 @@
       }
       if(mostrarActitudinal){
         filaEnc.innerHTML += '<th>Autoevaluación</th><th>Coevaluación</th>';
+      }
+      if(mostrarFormativo){
+        filaEnc.innerHTML += Object.values(NOMBRES_CAMPO_FORMATIVO).map(n=>`<th>${n}</th>`).join('') + '<th>Discrepancias</th>';
       }
 
       // 5) Filas
@@ -2603,6 +2676,22 @@
           const fuente = fuenteDe(est);
           fila += `<td style="text-align:center;"><input type="number" step="0.1" min="0" max="5" class="visorCampoEditable" style="width:52px; text-align:center;" data-ti="${ti}" data-campo="autoevaluacion" data-congelado="${yaCongelado}" value="${typeof fuente.autoevaluacion==='number' ? fuente.autoevaluacion : ''}"></td>`;
           fila += `<td style="text-align:center;"><input type="number" step="0.1" min="0" max="5" class="visorCampoEditable" style="width:52px; text-align:center;" data-ti="${ti}" data-campo="coevaluacion" data-congelado="${yaCongelado}" value="${typeof fuente.coevaluacion==='number' ? fuente.coevaluacion : ''}"></td>`;
+        }
+        if(mostrarFormativo){
+          const reportes = est.procesoFormativoDiario || {};
+          const conteos = {}; let discrepancias = 0;
+          for(const fechaReg in reportes){
+            const r = reportes[fechaReg];
+            // Si se pidió un trimestre específico, solo cuenta lo etiquetado con ESE trimestre
+            // (el campo "trimestre" se guarda desde que existe el selector en "Tema del día").
+            if(trimestreSel !== 'activo' && r.trimestre && Number(r.trimestre) !== Number(trimestreSel)) continue;
+            if(r.discrepancia){ discrepancias++; continue; }
+            for(const campo in NOMBRES_CAMPO_FORMATIVO){
+              if(r[campo] === 'Si' || r[campo] === 'Sí') conteos[campo] = (conteos[campo]||0)+1;
+            }
+          }
+          fila += Object.keys(NOMBRES_CAMPO_FORMATIVO).map(c => `<td style="text-align:center;">${conteos[c]||0}</td>`).join('');
+          fila += `<td style="text-align:center; ${discrepancias?'color:var(--bad); font-weight:700;':''}">${discrepancias}</td>`;
         }
         tr.innerHTML = fila;
         tbody.appendChild(tr);
@@ -2649,7 +2738,10 @@
         });
       });
 
-      resumen.textContent = `${estudiantes.length} estudiante(s), ${mostrarHetero ? actividadesAMostrar.length + ' actividad(es)' : 'sin heteroevaluación'}.`;
+      let textoResumen = `${estudiantes.length} estudiante(s)`;
+      if(mostrarHetero) textoResumen += `, ${actividadesAMostrar.length} actividad(es) de heteroevaluación`;
+      if(mostrarFormativo) textoResumen += `, proceso formativo del Trimestre ${trimestreSel === 'activo' ? '(todos)' : trimestreSel}`;
+      resumen.textContent = textoResumen + '.';
     }catch(err){
       resumen.textContent = 'Error al cargar: ' + err.message;
     }

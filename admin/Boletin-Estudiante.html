@@ -99,10 +99,10 @@
       <div style="font-size:0.8rem; color:var(--slate); margin-top:6px;">🎬 Un mensaje de Leo para ti</div>
     </div>
 
-    <div id="bannerVencidas" class="hidden" style="background:#FCE4E4; border:2px solid var(--bad); border-radius:10px; padding:12px; margin-bottom:10px; font-size:0.88rem; color:#7A1F0E; font-weight:700;">
+    <div id="bannerVencidas" class="hidden" style="background:#FBE9E5; border:2px solid var(--bad); border-radius:10px; padding:12px; margin-bottom:10px; font-size:0.88rem; color:var(--bad); font-weight:700;">
       ⛔ <span id="textoBannerVencidas"></span>
     </div>
-    <div id="bannerPendientes" class="hidden" style="background:#FFF3CD; border:2px solid var(--warn); border-radius:10px; padding:12px; margin-bottom:10px; font-size:0.88rem; color:#7A5C00; font-weight:700;">
+    <div id="bannerPendientes" class="hidden" style="background:#FDECD9; border:2px solid var(--naranja-leo); border-radius:10px; padding:12px; margin-bottom:10px; font-size:0.88rem; color:var(--naranja-leo-oscuro); font-weight:700;">
       ⏰ <span id="textoBannerPendientes"></span>
     </div>
 
@@ -570,7 +570,7 @@
           const reportoAlgoPositivo = Object.values(respuestas).some(v => v === 'Si' || v === 'AVeces');
           const esDiscrepancia = faltoSegunDocente && reportoAlgoPositivo;
 
-          const registro = { ...respuestas, fecha: HOY_ISO, discrepancia: esDiscrepancia };
+          const registro = { ...respuestas, fecha: HOY_ISO, trimestre: temaHoy.trimestre || null, discrepancia: esDiscrepancia };
           try{
             await db.collection('boletines').doc(b.ti).update({
               [`procesoFormativoDiario.${HOY_ISO}`]: registro
