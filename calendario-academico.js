@@ -11,7 +11,7 @@ window.CALENDARIO_ACADEMICO = {
   trimestres: {
     1: { inicio: "2026-01-13", fin: "2026-05-15" },
     2: { inicio: "2026-05-19", fin: "2026-08-21" },
-    3: { inicio: "2026-08-25", fin: "2026-11-30" }
+    3: { inicio: "2026-08-25", fin: "2026-12-04" }
   },
 
   // Festivos nacionales de Colombia 2026 (aplican en todo el país, incluye traslados

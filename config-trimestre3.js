@@ -5,3 +5,7 @@
 // esto, siempre en este archivo.
 // ============================================================
 // _registrarActividad(3, 'NOMBRE EXACTO EN LA PLANILLA', 'ruta/al/archivo.html');
+
+_registrarActividad(3, 'Razones y Proporciones', 'matematicas/sexto/trimestre_3/RAZONESYPROPORCIONES/Taller-Razones-Proporciones.html');
+
+_registrarActividad(3, 'Porcentajes', 'matematicas/sexto/trimestre_3/PORCENTAJES/Taller-Porcentajes.html');
