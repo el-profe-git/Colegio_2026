@@ -151,9 +151,9 @@
       <div class="fila">
         <label style="font-size:0.82rem; display:flex; align-items:center; gap:6px;">¿Para qué trimestre es esta subida?
           <select id="selectTrimestreDestino">
-            <option value="1">Trimestre 1 (histórico — no toca el trimestre en curso)</option>
-            <option value="2" selected>Trimestre 2 (en curso — así funciona hoy)</option>
-            <option value="3">Trimestre 3 (histórico — no toca el trimestre en curso)</option>
+            <option value="1">Trimestre 1</option>
+            <option value="2">Trimestre 2</option>
+            <option value="3">Trimestre 3</option>
           </select>
         </label>
       </div>
@@ -183,11 +183,12 @@
         <button class="btn" id="btnHabilitarConsulta">🔓 Habilitar consulta</button>
         <button class="btn warn" id="btnDeshabilitarConsulta">🔒 Deshabilitar consulta</button>
       </div>
-      <div style="font-size:0.82rem; margin:10px 0 6px 0;">Alerta "Plan de Mejora — Trimestre 2" en el boletín: <b id="estadoAlertaPlanMejoraTxt">—</b></div>
+      <div style="font-size:0.82rem; margin:10px 0 6px 0;">Alerta "Plan de Mejora" en el boletín — <span id="etiquetaTrimestreAlerta">Trimestre —</span>: <b id="estadoAlertaPlanMejoraTxt">—</b></div>
       <div class="fila">
         <button class="btn" id="btnHabilitarAlertaPlanMejora">✅ Habilitar alerta</button>
         <button class="btn warn" id="btnDeshabilitarAlertaPlanMejora">🚫 Deshabilitar alerta</button>
       </div>
+      <div style="font-size:0.78rem; color:var(--slate); margin-top:-4px;">Esto se guarda por separado para cada trimestre — activarla en Trimestre 2 no afecta lo que quede guardado en Trimestre 1 o 3.</div>
       <div style="font-size:0.82rem; margin:10px 0 6px 0;">Calculadora "¿Qué nota necesitas en Trimestre 3?" en el boletín: <b id="estadoCalculoT3Txt">—</b></div>
       <div class="fila">
         <button class="btn" id="btnHabilitarCalculoT3">✅ Habilitar calculadora</button>
@@ -195,17 +196,61 @@
       </div>
 
       <hr style="border:none; border-top:1.5px dashed #ccc; margin:14px 0;">
+      <div style="font-size:0.82rem; margin-bottom:6px; padding:10px; background:#FDECD9; border:1.5px solid var(--naranja-leo); border-radius:8px;">
+        <b>🚑 Rescatar datos atrapados en "en vivo"</b> — si por el bug viejo tienes notas de
+        un trimestre que nunca llegaron a guardarse en su lugar (aparecen vacías en el Visor
+        aunque tú sabes que sí las subiste), esta herramienta las mueve al trimestre correcto.
+        <b>No pisa nada que ya esté bien guardado</b> — si el estudiante ya tiene datos en ese
+        trimestre, se salta a ese estudiante sin tocarlo.
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Curso a rescatar</label>
+          <select id="cursoRescate">
+            <option value="">Selecciona un curso…</option>
+            <option value="602">602</option><option value="603">603</option>
+            <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+          </select>
+        </div>
+        <div class="campo"><label>¿A qué trimestre pertenecen esos datos sueltos?</label>
+          <select id="trimestreRescate">
+            <option value="1">Trimestre 1</option><option value="2">Trimestre 2</option><option value="3">Trimestre 3</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn warn" id="btnRescatarDatos">🚑 Rescatar datos sueltos a este trimestre</button>
+      <div id="reporteRescate" style="font-size:0.8rem; margin-top:8px; white-space:pre-wrap;"></div>
+
+      <hr style="border:none; border-top:1.5px dashed #ccc; margin:14px 0;">
       <div style="font-size:0.82rem; margin-bottom:6px;">
         <b>🧊 Congelar trimestre</b> — guarda las notas actuales de este curso como "Trimestre N" definitivo
         (aplicando la corrección a 3.4 si el estudiante aprobó su plan de mejora), y deja las notas en blanco
-        para empezar el siguiente trimestre limpio. <b>No se puede deshacer con un clic — revisa bien el curso
-        seleccionado arriba antes de usarlo.</b>
+        para empezar el siguiente trimestre limpio. <b>No se puede deshacer con un clic.</b>
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Curso a congelar</label>
+          <select id="filtroCursoCongelar">
+            <option value="">Selecciona un curso…</option>
+            <option value="602">602</option><option value="603">603</option>
+            <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+          </select>
+        </div>
       </div>
       <div id="reporteCongelar" style="font-size:0.8rem; margin-bottom:8px; white-space:pre-wrap;"></div>
       <div class="fila">
         <button class="btn warn" id="btnCongelarT1">🧊 Congelar Trimestre 1</button>
         <button class="btn warn" id="btnCongelarT2">🧊 Congelar Trimestre 2</button>
         <button class="btn warn" id="btnCongelarT3">🧊 Congelar Trimestre 3</button>
+      </div>
+      <hr style="border:none; border-top:1.5px dashed #ccc; margin:14px 0;">
+      <div style="font-size:0.82rem; margin-bottom:6px;">
+        <b>♻️ Descongelar trimestre</b> — deshace un congelamiento: trae de vuelta las notas
+        de ese trimestre a los campos "en vivo" (incluida la corrección de 3.4 si la tenía),
+        y borra el historial de ese trimestre. Úsalo solo si congelaste por error.
+      </div>
+      <div class="fila">
+        <button class="btn secondary" id="btnDescongelarT1">♻️ Descongelar Trimestre 1</button>
+        <button class="btn secondary" id="btnDescongelarT2">♻️ Descongelar Trimestre 2</button>
+        <button class="btn secondary" id="btnDescongelarT3">♻️ Descongelar Trimestre 3</button>
       </div>
     </div>
 
@@ -304,6 +349,30 @@
       <div id="resumenAsistencia" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
 
       <hr style="border:none; border-top:1.5px dashed #ccc; margin:14px 0;">
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:8px;">
+        <b>📌 Marcar un día sin clase</b> (paro, suspensión, evento imprevisto) — al marcarlo, esa
+        fecha se excluye automáticamente de la cuadrícula de asistencia para todos los estudiantes,
+        sin que tengas que poner "NC" uno por uno. No hace falta editar ningún archivo.
+      </div>
+      <div class="fila">
+        <select id="diaSinClaseCurso">
+          <option value="todos">Todos los cursos</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <input type="date" id="diaSinClaseFecha">
+        <input type="text" id="diaSinClaseMotivo" placeholder="Motivo (opcional, ej: Paro nacional)" style="flex:1; min-width:160px;">
+        <button class="btn secondary" id="btnMarcarDiaSinClase">➕ Marcar como sin clase</button>
+      </div>
+      <div id="hintDiaSinClase" style="font-size:0.85rem; margin-top:6px;"></div>
+      <div class="tabla-wrap" style="margin-top:8px;">
+        <table id="tablaDiasSinClase" style="font-size:0.8rem;">
+          <thead><tr><th>Fecha</th><th>Curso</th><th>Motivo</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <hr style="border:none; border-top:1.5px dashed #ccc; margin:14px 0;">
       <div style="font-size:0.82rem; margin-bottom:6px;">
         <b>📥 Subir Libro Maestro de Asistencia</b> — lee las hojas "Informe-{curso}" (T1/T2/T3 juntos)
         y actualiza los 3 trimestres a la vez: si un trimestre ya está congelado para un estudiante,
@@ -325,7 +394,7 @@
       </div>
 
       <div class="tabla-scroll" style="max-height:420px; overflow:auto;">
-        <table style="width:100%; font-size:0.8rem; border-collapse:collapse;" id="tablaAsistencia">
+        <table style="width:max-content; min-width:100%; font-size:0.8rem; border-collapse:collapse;" id="tablaAsistencia">
           <thead><tr id="filaFechasAsistencia"><th style="position:sticky; left:0; background:var(--paper);">Estudiante</th></tr></thead>
           <tbody id="cuerpoAsistencia"></tbody>
         </table>
@@ -373,8 +442,35 @@
       <div class="fila">
         <button class="btn" id="btnGuardarTema">💾 Guardar tema del día</button>
         <button class="btn secondary" id="btnRepetirClaseAnterior">🔁 Repetir lo de la última clase</button>
+        <button class="btn secondary" id="btnExportarBitacora">📥 Exportar bitácora de planeación</button>
       </div>
       <div id="hintTema" style="font-size:0.85rem; margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>✏️ Registrar Proceso Formativo — directo desde el Panel</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Marca aquí mismo el Sí/A veces/No de cada estudiante, sin depender de que ellos entren
+        a su Boletín a autorreportarlo. Usa el mismo "Tema del día" ya guardado para saber qué
+        preguntas aplican ese día — si no has guardado un tema para esa fecha, guárdalo arriba primero.
+      </div>
+      <div class="fila">
+        <select id="pfCurso">
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <input type="date" id="pfFecha">
+        <button class="btn secondary" id="btnCargarProcesoFormativo">🔄 Cargar estudiantes</button>
+      </div>
+      <div id="resumenProcesoFormativoPanel" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
+      <div class="tabla-wrap">
+        <table id="tablaProcesoFormativoPanel">
+          <thead><tr id="filaEncabezadoPFPanel"><th>Estudiante</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="btn" id="btnGuardarProcesoFormativoPanel" style="margin-top:10px;">💾 Guardar todos</button>
+      <div id="hintProcesoFormativoPanel" style="font-size:0.85rem; margin-top:8px;"></div>
     </div>
 
     <div class="card">
@@ -403,6 +499,25 @@
 
     </div><!-- /vista-formativo -->
     <div class="vista-panel" data-vista="correos">
+
+    <div class="card" style="border-color:var(--bad); border-width:2px;">
+      <h2>🗑 Zona de riesgo — Reiniciar usuarios de acceso</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Borra el campo "correo" (usuario de acceso) de <b>todos</b> los estudiantes de un curso, para
+        que se regenere solo la próxima vez que subas el Excel de ese curso. <b>No borra notas, asistencia,
+        ni ningún otro dato</b> — solo el usuario de acceso. Esto NO borra las cuentas reales de Firebase
+        Authentication (eso se hace aparte, desde Firebase Console — selección múltiple en la pestaña Users).
+      </div>
+      <div class="fila">
+        <select id="rrCurso">
+          <option value="">Selecciona un curso…</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+        <button class="btn warn" id="btnReiniciarUsuarios">🗑 Borrar campo "correo" de este curso</button>
+      </div>
+      <div id="hintReiniciarUsuarios" style="font-size:0.85rem; margin-top:8px;"></div>
+    </div>
 
     <div class="card">
       <h2>👪 Acudientes</h2>
@@ -458,12 +573,78 @@
     </div><!-- /vista-correos -->
     <div class="vista-panel" data-vista="planmejora">
 
+    <div class="card" style="border-color:var(--accent-dark); border-width:2px;">
+      <h2>🗓️ Configuración Académica — Fechas de Subcomisión</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Estas fechas alimentan la alerta automática roja de la tabla de abajo, y el aviso
+        visual en el Boletín del estudiante. No afectan notas ni asistencia.
+      </div>
+      <div class="tabla-wrap">
+        <table style="font-size:0.82rem;">
+          <thead><tr><th>Trimestre</th><th>Fecha de corte (subcomisión)</th><th>Fecha de entrega del plan</th><th>Fecha de cierre de la estrategia</th></tr></thead>
+          <tbody>
+            <tr><td>Trimestre 1</td>
+              <td><input type="date" id="fechaCorteT1"></td>
+              <td><input type="date" id="fechaEntregaT1"></td>
+              <td><input type="date" id="fechaCierreT1"></td>
+            </tr>
+            <tr><td>Trimestre 2</td>
+              <td><input type="date" id="fechaCorteT2"></td>
+              <td><input type="date" id="fechaEntregaT2"></td>
+              <td><input type="date" id="fechaCierreT2"></td>
+            </tr>
+            <tr><td>Trimestre 3</td>
+              <td><input type="date" id="fechaCorteT3"></td>
+              <td><input type="date" id="fechaEntregaT3"></td>
+              <td><input type="date" id="fechaCierreT3"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="btn" id="btnGuardarFechasSubcomision" style="margin-top:10px;">💾 Guardar fechas</button>
+      <div id="hintFechasSubcomision" style="font-size:0.85rem; margin-top:8px;"></div>
+
+      <hr style="border:none; border-top:1.5px dashed #ccc; margin:16px 0;">
+      <h3 style="font-size:0.95rem;">🗓️ Fechas de Plan de Mejora Integral</h3>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Distintas a las de Subcomisión — el Plan de Mejora Integral se reporta al final del
+        trimestre, con base en la nota definitiva completa, no en el 70% parcial.
+      </div>
+      <div class="tabla-wrap">
+        <table style="font-size:0.82rem;">
+          <thead><tr><th>Trimestre</th><th>Fecha de corte (nota definitiva)</th><th>Fecha de entrega del plan</th><th>Fecha de cierre de la estrategia</th></tr></thead>
+          <tbody>
+            <tr><td>Trimestre 1</td>
+              <td><input type="date" id="fechaCorteIntegralT1"></td>
+              <td><input type="date" id="fechaEntregaIntegralT1"></td>
+              <td><input type="date" id="fechaCierreIntegralT1"></td>
+            </tr>
+            <tr><td>Trimestre 2</td>
+              <td><input type="date" id="fechaCorteIntegralT2"></td>
+              <td><input type="date" id="fechaEntregaIntegralT2"></td>
+              <td><input type="date" id="fechaCierreIntegralT2"></td>
+            </tr>
+            <tr><td>Trimestre 3</td>
+              <td><input type="date" id="fechaCorteIntegralT3"></td>
+              <td><input type="date" id="fechaEntregaIntegralT3"></td>
+              <td><input type="date" id="fechaCierreIntegralT3"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="btn" id="btnGuardarFechasIntegral" style="margin-top:10px;">💾 Guardar fechas</button>
+      <div id="hintFechasIntegral" style="font-size:0.85rem; margin-top:8px;"></div>
+    </div>
+
     <div class="card">
       <h2>📋 Plan de Mejora — Subcomisión / Integral</h2>
       <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
         <b>Subcomisión:</b> "Reportado" se calcula solo desde el promedio del 70% (heteroevaluación).
         <b>Plan de Mejora Integral:</b> "Reportado" se calcula solo desde la nota definitiva completa.
         Todo lo demás lo llenas tú. "Resultado" se sugiere solo (≥3.4 = Aprobado), pero puedes cambiarlo.
+        <br><b>🔴 Alerta roja:</b> se enciende sola si el promedio de heteroevaluación que lleva es
+        &lt;3.4, o si su proceso formativo (participación/talleres) tiene la mitad o menos en "Sí" —
+        ayuda a detectar rápido a quién reportar.
       </div>
       <div class="fila">
         <select id="pmCurso">
@@ -485,7 +666,7 @@
       <div class="tabla-wrap">
         <table id="tablaPlanMejora">
           <thead><tr>
-            <th>Estudiante</th><th>Reportado<br>(auto)</th><th>Informado</th>
+            <th>🔴</th><th>Estudiante</th><th>Reportado<br>(auto)</th><th>Informado</th>
             <th>Presentó<br>evaluación</th><th>Presentó<br>actividades</th>
             <th>Nota proceso</th><th>Resultado</th>
           </tr></thead>
@@ -519,6 +700,7 @@
           <option value="heteroevaluacion">Solo Heteroevaluación</option>
           <option value="actitudinal">Solo Actitudinal</option>
           <option value="formativo">Solo Proceso Formativo</option>
+          <option value="definitiva">Solo Definitiva (todo el año)</option>
         </select>
         <button class="btn secondary" id="btnCargarVisor">🔄 Cargar</button>
       </div>
@@ -561,19 +743,16 @@
         <input type="text" id="naNombreActividad" style="width:100%;">
       </div>
       <div class="fila">
-        <div class="campo"><label>Categoría de la actividad</label>
-          <select id="naCategoria">
-            <option value="heteroevaluacion">Heteroevaluación</option>
-            <option value="actitudinal">Actitudinal</option>
-          </select>
+        <div class="campo"><label>Esta actividad corresponde a (marca todas las que apliquen)</label>
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naCognitivo" checked> Heteroevaluación — Cognitivo</label>
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naProcedimental"> Heteroevaluación — Procedimental</label>
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naAutoevaluacion"> Actitudinal — Autoevaluación</label>
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naCoevaluacion"> Actitudinal — Coevaluación</label>
         </div>
-        <div class="campo" id="naSubtiposHetero"><label>Corresponde a</label>
-          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naCognitivo" checked> Cognitivo</label>
-          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naProcedimental"> Procedimental</label>
-        </div>
-        <div class="campo hidden" id="naSubtiposActitudinal"><label>Corresponde a</label>
-          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naAutoevaluacion" checked> Autoevaluación</label>
-          <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naCoevaluacion"> Coevaluación</label>
+      </div>
+      <div class="fila">
+        <div class="campo"><label>Fecha límite de entrega (opcional — el estudiante verá el aviso "vencida" después de esta fecha)</label>
+          <input type="date" id="naFechaLimite">
         </div>
       </div>
       <button class="btn" id="btnPrepararActividad">📋 Generar instrucciones</button>
@@ -584,6 +763,12 @@
         <div style="font-weight:700; margin:12px 0 6px 0;">2. Pega esta línea en <code id="naNombreConfig"></code> (sin tocar nada más de ese archivo):</div>
         <code id="naLineaConfig" style="display:block; background:#fff; padding:8px; border-radius:6px; word-break:break-all;"></code>
         <button class="btn secondary mini" id="btnCopiarLinea" style="margin-top:8px;">📋 Copiar la línea</button>
+        <div style="font-weight:700; margin:12px 0 6px 0;">3. Una vez subido, pruébalo con un clic (link real, no solo texto):</div>
+        <div style="font-size:0.78rem; color:var(--slate); margin-bottom:4px;">GitHub Pages:</div>
+        <a id="naLinkGithub" target="_blank" style="display:block; background:#fff; padding:8px; border-radius:6px; word-break:break-all; margin-bottom:6px;"></a>
+        <div style="font-size:0.78rem; color:var(--slate); margin-bottom:4px;">Cloudflare:</div>
+        <a id="naLinkCloudflare" target="_blank" style="display:block; background:#fff; padding:8px; border-radius:6px; word-break:break-all;"></a>
+        <div id="naConfirmacionFecha" style="margin-top:10px; font-size:0.82rem;"></div>
       </div>
     </div>
 
@@ -1150,8 +1335,9 @@
         let batch = db.batch();
         let contador = 0;
         for(const est of estudiantes){
-          if(trimestreDestino === '2'){
-            // Comportamiento de siempre: escribe directo en los campos "en vivo" del boletín.
+          if(trimestreDestino === String(trimestreAsistenciaActual)){
+            // Comportamiento de siempre: escribe directo en los campos "en vivo" del boletín
+            // — pero ahora comparando contra el trimestre activo REAL, no fijo a "2".
             batch.set(db.collection('boletines').doc(est.ti), est, {merge:true});
           }else{
             // Trimestre histórico (1 o 3): el detalle completo se guarda ANIDADO dentro de
@@ -1168,7 +1354,7 @@
         totalEstudiantes += estudiantes.length;
         lineas.push(`${hoja}: ${estudiantes.length} estudiantes subidos`);
       }
-      const etiquetaTrimestre = trimestreDestino==='2' ? 'Trimestre 2 (en curso)' : `Trimestre ${trimestreDestino} (histórico)`;
+      const etiquetaTrimestre = trimestreDestino===String(trimestreAsistenciaActual) ? `Trimestre ${trimestreDestino} (en curso)` : `Trimestre ${trimestreDestino} (histórico)`;
       let texto = `✅ Notas subidas a ${etiquetaTrimestre}.\n` + lineas.join('\n');
       if(totalAvisos.length) texto += `\n\n⚠ ${totalAvisos.length} aviso(s) — revisar a mano en la planilla:\n` + totalAvisos.map(a=>'  · '+a).join('\n');
       reporte.textContent = texto;
@@ -1196,20 +1382,26 @@
   });
 
   async function cargarEstadoAlertaPlanMejora_(){
+    document.getElementById('etiquetaTrimestreAlerta').textContent = `Trimestre ${trimestreAsistenciaActual}`;
     try{
       const snap = await db.collection('config').doc('boletin-consulta').get();
-      const habilitada = snap.exists ? (snap.data().alertaPlanMejoraT2Habilitada !== false) : true;
+      const mapaPorTrimestre = snap.exists ? (snap.data().alertaPlanMejoraPorTrimestre || {}) : {};
+      const habilitada = mapaPorTrimestre[trimestreAsistenciaActual] !== false; // por defecto, habilitada
       document.getElementById('estadoAlertaPlanMejoraTxt').textContent = habilitada ? 'Habilitada ✅' : 'Deshabilitada 🚫';
     }catch(err){
       document.getElementById('estadoAlertaPlanMejoraTxt').textContent = 'No se pudo leer';
     }
   }
   document.getElementById('btnHabilitarAlertaPlanMejora').addEventListener('click', async ()=>{
-    await db.collection('config').doc('boletin-consulta').set({alertaPlanMejoraT2Habilitada:true}, {merge:true});
+    await db.collection('config').doc('boletin-consulta').set({
+      alertaPlanMejoraPorTrimestre: { [trimestreAsistenciaActual]: true }
+    }, {merge:true});
     cargarEstadoAlertaPlanMejora_();
   });
   document.getElementById('btnDeshabilitarAlertaPlanMejora').addEventListener('click', async ()=>{
-    await db.collection('config').doc('boletin-consulta').set({alertaPlanMejoraT2Habilitada:false}, {merge:true});
+    await db.collection('config').doc('boletin-consulta').set({
+      alertaPlanMejoraPorTrimestre: { [trimestreAsistenciaActual]: false }
+    }, {merge:true});
     cargarEstadoAlertaPlanMejora_();
   });
 
@@ -1237,13 +1429,13 @@
   const CAMPO_PLAN_MEJORA_POR_TRIMESTRE = { 1: 'planMejoraT1', 2: 'planMejoraSubcomisionActual', 3: 'planMejoraSubcomisionActual' };
 
   async function congelarTrimestre_(numero){
-    const cursoFiltro = document.getElementById('filtroCurso').value;
+    const cursoFiltro = document.getElementById('filtroCursoCongelar').value;
     const reporte = document.getElementById('reporteCongelar');
     if(!cursoFiltro){
-      reporte.textContent = '⚠ Selecciona un curso específico arriba (no "Todos") antes de congelar — es una medida de seguridad para no afectar cursos por error.';
+      reporte.textContent = '⚠ Selecciona un curso arriba antes de congelar.';
       return;
     }
-    if(!confirm(`¿Congelar el Trimestre ${numero} del curso ${cursoFiltro}? Esto guarda las notas actuales como definitivas de ese trimestre y deja las notas en blanco para el siguiente. No se puede deshacer con un clic.`)) return;
+    if(!confirm(`¿Congelar el Trimestre ${numero} del curso ${cursoFiltro}? Esto aplica la corrección de 3.4 (si aplica) y marca ese trimestre como cerrado. No se puede deshacer con un clic.`)) return;
 
     reporte.textContent = 'Congelando…';
     try{
@@ -1254,50 +1446,121 @@
       snap.forEach(doc=>{
         const b = doc.data();
         if(String(b.curso) !== cursoFiltro) return;
-        const notaAnterior = (typeof b.notaDefinitiva === 'number') ? b.notaDefinitiva : null;
-        if(notaAnterior === null){ sinNota.push(b.nombre || doc.id); return; }
+        // Cada trimestre vive SOLO en su propio campo — Congelar NO mueve nada desde
+        // ningún "en vivo", solo trabaja DENTRO de trimestreN, que ya debe tener los
+        // datos (por Excel, por el estudiante presentando, o por autorreporte).
+        const datosTrimestre = b[`trimestre${numero}`];
+        const notaActual = datosTrimestre && typeof datosTrimestre.notaDefinitiva === 'number' ? datosTrimestre.notaDefinitiva : null;
+        if(notaActual === null){ sinNota.push(b.nombre || doc.id); return; }
+        if(datosTrimestre.congelado){ return; } // ya estaba congelado, no se toca de nuevo
         const planTrimestre = b[campoPlan] || {};
         const aprobado = String(planTrimestre.aprobo || '').trim().toUpperCase();
-        const corregido = (aprobado === 'SI' || aprobado === 'SÍ');
-        const notaFinalTrimestre = corregido ? 3.4 : notaAnterior;
+        const corregido = (aprobado === 'SI' || aprobado === 'SÍ') && notaActual < 3.4;
+        const notaFinal = corregido ? 3.4 : notaActual;
         batch.update(doc.ref, {
-          // El historial de cada trimestre guarda TODO lo que tenía en vivo -- no solo la
-          // nota final -- para que después se pueda consultar exactamente cómo le fue en
-          // autoevaluación, coevaluación, observaciones y asistencia de ESE trimestre.
-          [`trimestre${numero}`]: {
-            nota: notaFinalTrimestre, notaAnterior: corregido ? notaAnterior : null, corregido,
-            fecha: new Date().toISOString().slice(0,10), // AAAA-MM-DD, la fecha exacta del congelamiento
-            planMejora: planTrimestre,
-            notas: b.notas || [],
-            autoevaluacion: (typeof b.autoevaluacion === 'number') ? b.autoevaluacion : null,
-            coevaluacion: (typeof b.coevaluacion === 'number') ? b.coevaluacion : null,
-            observacionCognitiva: b.observacionCognitiva || null,
-            observacionProcedimental: b.observacionProcedimental || null,
-            observacionActitudinal: b.observacionActitudinal || null,
-            observacionGeneral: b.observacionGeneral || null,
-            clasesProgramadas: (typeof b.clasesProgramadas === 'number') ? b.clasesProgramadas : null,
-            clasesAsistidas: (typeof b.clasesAsistidas === 'number') ? b.clasesAsistidas : null,
-            clasesExcusadas: (typeof b.clasesExcusadas === 'number') ? b.clasesExcusadas : null,
-            competenciaALograr: b.competenciaALograr || null
-          },
-          notas: [], notaDefinitiva: firebase.firestore.FieldValue.delete(),
-          autoevaluacion: firebase.firestore.FieldValue.delete(), coevaluacion: firebase.firestore.FieldValue.delete(),
-          observacionCognitiva: firebase.firestore.FieldValue.delete(), observacionProcedimental: firebase.firestore.FieldValue.delete(),
-          observacionActitudinal: firebase.firestore.FieldValue.delete(), observacionGeneral: firebase.firestore.FieldValue.delete(),
-          clasesProgramadas: firebase.firestore.FieldValue.delete(), clasesAsistidas: firebase.firestore.FieldValue.delete(),
-          clasesExcusadas: firebase.firestore.FieldValue.delete()
+          [`trimestre${numero}.notaDefinitiva`]: notaFinal,
+          [`trimestre${numero}.notaAntesDeCorregir`]: corregido ? notaActual : firebase.firestore.FieldValue.delete(),
+          [`trimestre${numero}.corregido`]: corregido,
+          [`trimestre${numero}.congelado`]: true,
+          [`trimestre${numero}.fechaCongelamiento`]: new Date().toISOString().slice(0,10)
         });
         procesados++;
         if(corregido) corregidos++;
       });
       await batch.commit();
       let texto = `✅ Trimestre ${numero} congelado para ${procesados} estudiante(s) del curso ${cursoFiltro}. ${corregidos} con corrección por plan de mejora.`;
-      if(sinNota.length) texto += `\n⚠ ${sinNota.length} sin nota definitiva, no se tocaron: ${sinNota.join(', ')}`;
+      if(sinNota.length) texto += `\n⚠ ${sinNota.length} sin nota definitiva en Trimestre ${numero} todavía, no se tocaron: ${sinNota.join(', ')}`;
       reporte.textContent = texto;
     }catch(err){
       reporte.textContent = 'Error al congelar: ' + err.message;
     }
   }
+
+  async function descongelarTrimestre_(numero){
+    const cursoFiltro = document.getElementById('filtroCursoCongelar').value;
+    const reporte = document.getElementById('reporteCongelar');
+    if(!cursoFiltro){
+      reporte.textContent = '⚠ Selecciona un curso arriba antes de descongelar.';
+      return;
+    }
+    if(!confirm(`¿Descongelar el Trimestre ${numero} del curso ${cursoFiltro}? Esto deshace la corrección de 3.4 (si la tenía) y vuelve a marcarlo como abierto — los datos NO se mueven de ningún lado, siguen en trimestre${numero}.`)) return;
+
+    reporte.textContent = 'Descongelando…';
+    try{
+      const snap = await db.collection('boletines').get();
+      let procesados = 0, sinHistorial = [];
+      const batch = db.batch();
+      snap.forEach(doc=>{
+        const b = doc.data();
+        if(String(b.curso) !== cursoFiltro) return;
+        const datosTrimestre = b[`trimestre${numero}`];
+        if(!datosTrimestre || !datosTrimestre.congelado){ sinHistorial.push(b.nombre || doc.id); return; }
+        const notaARestaurar = datosTrimestre.corregido && typeof datosTrimestre.notaAntesDeCorregir === 'number'
+          ? datosTrimestre.notaAntesDeCorregir : datosTrimestre.notaDefinitiva;
+        batch.update(doc.ref, {
+          [`trimestre${numero}.notaDefinitiva`]: notaARestaurar,
+          [`trimestre${numero}.notaAntesDeCorregir`]: firebase.firestore.FieldValue.delete(),
+          [`trimestre${numero}.corregido`]: false,
+          [`trimestre${numero}.congelado`]: false,
+          [`trimestre${numero}.fechaCongelamiento`]: firebase.firestore.FieldValue.delete()
+        });
+        procesados++;
+      });
+      await batch.commit();
+      let texto = `✅ Trimestre ${numero} descongelado para ${procesados} estudiante(s) del curso ${cursoFiltro} — vuelve a estar abierto para editar, sin mover ningún dato.`;
+      if(sinHistorial.length) texto += `\n⚠ ${sinHistorial.length} no estaban congelados, no se tocaron.`;
+      reporte.textContent = texto;
+    }catch(err){
+      reporte.textContent = 'Error al descongelar: ' + err.message;
+    }
+  }
+
+  document.getElementById('btnRescatarDatos').addEventListener('click', async ()=>{
+    const curso = document.getElementById('cursoRescate').value;
+    const trimestre = document.getElementById('trimestreRescate').value;
+    const reporte = document.getElementById('reporteRescate');
+    if(!curso){ reporte.textContent = '⚠ Selecciona un curso primero.'; return; }
+    if(!confirm(`¿Rescatar los datos sueltos ("en vivo") del curso ${curso} y moverlos a Trimestre ${trimestre}?\n\nSolo se tocan estudiantes que NO tengan ya datos en Trimestre ${trimestre} — a los que ya tienen, no se les toca nada.`)) return;
+
+    reporte.textContent = 'Buscando datos sueltos…';
+    const CAMPOS_SUELTOS = ['notas','notaDefinitiva','autoevaluacion','coevaluacion',
+      'observacionCognitiva','observacionProcedimental','observacionActitudinal','observacionGeneral',
+      'clasesProgramadas','clasesAsistidas','clasesExcusadas'];
+    try{
+      const snap = await db.collection('boletines').get();
+      let rescatados = 0, saltados = 0, sinNadaSuelto = 0;
+      const batch = db.batch();
+      snap.forEach(doc=>{
+        const b = doc.data();
+        if(String(b.curso) !== curso) return;
+        // Ya tiene datos en ESE trimestre -> no se toca, para no arriesgar pisar algo bueno.
+        if(b[`trimestre${trimestre}`] && typeof b[`trimestre${trimestre}`].notaDefinitiva === 'number'){ saltados++; return; }
+        // Si no tiene NADA suelto tampoco, no hay nada que rescatar para este estudiante.
+        const tieneAlgoSuelto = CAMPOS_SUELTOS.some(c => b[c] !== undefined && b[c] !== null && !(Array.isArray(b[c]) && b[c].length===0));
+        if(!tieneAlgoSuelto){ sinNadaSuelto++; return; }
+
+        const datosRescatados = {};
+        CAMPOS_SUELTOS.forEach(c => { if(b[c] !== undefined) datosRescatados[c] = b[c]; });
+        const actualizacion = { [`trimestre${trimestre}`]: datosRescatados };
+        // Limpia los campos sueltos del nivel de arriba, ya que quedaron movidos adentro.
+        CAMPOS_SUELTOS.forEach(c => { actualizacion[c] = firebase.firestore.FieldValue.delete(); });
+        batch.update(doc.ref, actualizacion);
+        rescatados++;
+      });
+      await batch.commit();
+      let texto = `✅ ${rescatados} estudiante(s) rescatados hacia Trimestre ${trimestre}.`;
+      if(saltados) texto += `\n⏭ ${saltados} ya tenían datos en Trimestre ${trimestre} — no se tocaron.`;
+      if(sinNadaSuelto) texto += `\n— ${sinNadaSuelto} no tenían nada suelto que rescatar.`;
+      reporte.textContent = texto;
+    }catch(err){
+      reporte.textContent = 'Error al rescatar: ' + err.message;
+    }
+  });
+
+
+  document.getElementById('btnDescongelarT1').addEventListener('click', ()=>descongelarTrimestre_(1));
+  document.getElementById('btnDescongelarT2').addEventListener('click', ()=>descongelarTrimestre_(2));
+  document.getElementById('btnDescongelarT3').addEventListener('click', ()=>descongelarTrimestre_(3));
   document.getElementById('btnCongelarT1').addEventListener('click', ()=>congelarTrimestre_(1));
   document.getElementById('btnCongelarT2').addEventListener('click', ()=>congelarTrimestre_(2));
   document.getElementById('btnCongelarT3').addEventListener('click', ()=>congelarTrimestre_(3));
@@ -1342,11 +1605,11 @@
       window.__datosDocenteActual = { correo: user.email.toLowerCase(), ...docDocente.data() };
       document.getElementById('loginCard').classList.add('hidden');
       document.getElementById('panel').classList.remove('hidden');
+      await cargarTrimestreActivo_(); // primero esto, para que el filtro por defecto use el valor real
       cargarIntentos();
       cargarEstadoConsulta_();
       cargarEstadoAlertaPlanMejora_();
       cargarEstadoCalculoT3_();
-      cargarTrimestreActivo_();
     }catch(err){
       hint.textContent = 'Error: ' + err.message;
       document.getElementById('btnLogin').disabled = false;
@@ -1389,11 +1652,24 @@
         try{
           const snap = await db.collection('categoriasActividad').get();
           snap.forEach(doc => { categoriasActividadCache_[doc.id] = doc.data(); });
-        }catch(err){ /* si falla, el filtro simplemente no excluye nada */ }
+        }catch(err){ /* si falla, el filtro simplemente no excluye nada por esta vía */ }
       }
-      // Una actividad sin categoría registrada (viejas, de antes de esta función) se
-      // deja pasar siempre, para no "esconderla" solo por no tener trimestre guardado.
-      nombres = nombres.filter(n => !categoriasActividadCache_[n] || Number(categoriasActividadCache_[n].trimestre) === Number(trimestreFiltro));
+      // Fuente principal: el trimestre real de los INTENTOS de los estudiantes (más
+      // confiable, porque no depende de que alguien haya categorizado la actividad a
+      // mano). Si una actividad no tiene NINGÚN intento con trimestre guardado, se usa
+      // la categorización manual como respaldo; si tampoco existe ninguna de las dos,
+      // se deja pasar para no esconderla por accidente.
+      const trimestresPorActividad = {};
+      todosLosIntentos.forEach(x => {
+        if(!x.actividad) return;
+        trimestresPorActividad[x.actividad] = trimestresPorActividad[x.actividad] || new Set();
+        if(x.trimestre !== undefined && x.trimestre !== null) trimestresPorActividad[x.actividad].add(String(x.trimestre));
+      });
+      nombres = nombres.filter(n => {
+        const trimestresVistos = trimestresPorActividad[n];
+        if(trimestresVistos && trimestresVistos.size) return trimestresVistos.has(String(trimestreFiltro));
+        return !categoriasActividadCache_[n] || Number(categoriasActividadCache_[n].trimestre) === Number(trimestreFiltro);
+      });
     }
     sel.innerHTML = nombres.map(n=>`<option value="${n}">${n}</option>`).join('') || '<option value="">(sin actividades registradas aún)</option>';
     if(nombres.includes(actual)) sel.value = actual;
@@ -1536,6 +1812,7 @@
   /* ============================================================
      CATEGORÍA 3 — tabla, checklist y acciones masivas
      ============================================================ */
+  let yaSeAplicoFiltroTrimestrePorDefecto_ = false;
   async function cargarIntentos(){
     try{
       const snap = await db.collection('intentos').get();
@@ -1544,6 +1821,18 @@
       seleccionados.clear();
       poblarSelectorActividades();
       pintarTabla();
+      // Por defecto, Resultados muestra solo el trimestre activo del sistema — el docente
+      // puede cambiarlo a "Todos" manualmente si quiere ver el histórico completo.
+      if(!yaSeAplicoFiltroTrimestrePorDefecto_){
+        yaSeAplicoFiltroTrimestrePorDefecto_ = true;
+        const selTrimestre = document.getElementById('filtroTrimestre');
+        if([...selTrimestre.options].some(o=>o.value === String(trimestreAsistenciaActual))){
+          selTrimestre.value = String(trimestreAsistenciaActual);
+          pintarTabla();
+        }
+        document.getElementById('filtroTrimestreActividadConfig').value = String(trimestreAsistenciaActual);
+        poblarSelectorActividades();
+      }
     }catch(err){
       setHint('No se pudieron cargar los intentos: ' + err.message, 'err');
     }
@@ -1927,7 +2216,7 @@
   // ============ Asistencia: fechas reales calculadas desde calendario-academico.js ============
   const DIAS_SEMANA_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-  function generarFechasDeClase_(curso, numeroTrimestre){
+  function generarFechasDeClase_(curso, numeroTrimestre, fechasExtraSinClase){
     const cal = window.CALENDARIO_ACADEMICO;
     if(!cal){ return { error: 'No se encontró calendario-academico.js — revisa que esté cargado.' }; }
     const trimestre = cal.trimestres && cal.trimestres[numeroTrimestre];
@@ -1936,6 +2225,8 @@
     if(!horarioCurso || !horarioCurso.dias || !horarioCurso.dias.length) return { error: `No hay horario configurado para el curso ${curso} en calendario-academico.js.` };
 
     const festivos = new Set(cal.festivos || []);
+    // Días marcados a mano desde el Panel (paros, suspensiones) — se excluyen igual que festivos.
+    (fechasExtraSinClase || []).forEach(f => festivos.add(f));
     const diasPermitidos = new Set(horarioCurso.dias);
     const fechas = [];
     let cursor = new Date(trimestre.inicio + 'T00:00:00');
@@ -1948,7 +2239,7 @@
       }
       cursor.setDate(cursor.getDate()+1);
     }
-    return { fechas };
+    return { fechas, rango: { inicio: trimestre.inicio, fin: trimestre.fin } };
   }
 
   let trimestreAsistenciaActual = 2; // valor de respaldo mientras carga el real desde Firestore
@@ -1961,15 +2252,60 @@
       trimestreAsistenciaActual = 2;
     }
     document.getElementById('trimestreActivoTxt').textContent = 'Trimestre ' + trimestreAsistenciaActual;
+    sincronizarDropdownSubida_();
+  }
+
+  // El dropdown de "¿para qué trimestre es esta subida?" siempre debe reflejar cuál es
+  // realmente el trimestre activo — antes tenía "Trimestre 2" escrito fijo en el HTML,
+  // y eso hacía que subir notas al trimestre activo real (si era 1 o 3) las guardara
+  // como "histórico" en vez de "en vivo", sin que las pestañas del Boletín las mostraran.
+  function sincronizarDropdownSubida_(){
+    const sel = document.getElementById('selectTrimestreDestino');
+    if(!sel) return;
+    for(const opcion of sel.options){
+      const n = opcion.value;
+      opcion.textContent = (n === String(trimestreAsistenciaActual))
+        ? `Trimestre ${n} (en curso — así funciona hoy)`
+        : `Trimestre ${n} (histórico — no toca el trimestre en curso)`;
+    }
+    sel.value = String(trimestreAsistenciaActual);
   }
 
   async function activarTrimestre_(numero){
     const hint = document.getElementById('hintTrimestreActivo');
+
+    // Verificación real: si vas a activar un trimestre NUEVO (más alto que el actual) y
+    // todavía hay estudiantes con datos en vivo, es casi seguro que no congelaste el
+    // trimestre anterior — activar la etiqueta no mueve ni borra esos datos por sí sola.
+    if(numero > trimestreAsistenciaActual){
+      hint.textContent = 'Verificando si el trimestre anterior ya fue congelado…';
+      try{
+        const snap = await db.collection('boletines').limit(30).get();
+        let conDatosEnVivo = 0;
+        snap.forEach(doc => {
+          const b = doc.data();
+          if((b.notas && b.notas.length) || typeof b.notaDefinitiva === 'number') conDatosEnVivo++;
+        });
+        if(conDatosEnVivo > 0){
+          const continuar = confirm(
+            `⚠ Encontré ${conDatosEnVivo} estudiante(s) que TODAVÍA tienen notas en vivo del Trimestre ${trimestreAsistenciaActual}.\n\n` +
+            `Si activas el Trimestre ${numero} sin haber congelado antes el Trimestre ${trimestreAsistenciaActual}, ` +
+            `el Visor de Planilla y el Boletín seguirán mostrando esas notas viejas — "Activar" solo cambia la ` +
+            `etiqueta, no mueve ni borra ningún dato.\n\n` +
+            `¿Ya congelaste el Trimestre ${trimestreAsistenciaActual} para todos los cursos? Si no, cancela esto y ` +
+            `ve primero a "Congelar Trimestre" arriba.\n\n¿Continuar de todas formas?`
+          );
+          if(!continuar){ hint.textContent = 'Cancelado — ve a "Congelar Trimestre" antes de activar el siguiente.'; return; }
+        }
+      }catch(err){ /* si falla la verificación, se sigue igual, sin bloquear al docente */ }
+    }
+
     hint.textContent = 'Guardando…';
     try{
       await db.collection('config').doc('sistema').set({ trimestreActivo: numero }, {merge:true});
       trimestreAsistenciaActual = numero;
       document.getElementById('trimestreActivoTxt').textContent = 'Trimestre ' + numero;
+      sincronizarDropdownSubida_();
       hint.textContent = `✅ Ahora el sistema trabaja en Trimestre ${numero}.`;
     }catch(err){
       hint.textContent = 'Error: ' + err.message;
@@ -1978,6 +2314,50 @@
   document.getElementById('btnActivarT1').addEventListener('click', ()=> activarTrimestre_(1));
   document.getElementById('btnActivarT2').addEventListener('click', ()=> activarTrimestre_(2));
   document.getElementById('btnActivarT3').addEventListener('click', ()=> activarTrimestre_(3));
+
+  // ============ Días sin clase (paros, suspensiones, eventos imprevistos) ============
+  async function cargarDiasSinClase_(){
+    const tbody = document.querySelector('#tablaDiasSinClase tbody');
+    tbody.innerHTML = '';
+    try{
+      const snap = await db.collection('diasSinClase').get();
+      const items = [];
+      snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      items.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+      for(const d of items){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.fecha}</td><td>${d.curso === 'todos' ? 'Todos' : d.curso}</td><td>${d.motivo||'—'}</td><td></td>`;
+        const btnQuitar = document.createElement('button');
+        btnQuitar.className = 'btn mini warn';
+        btnQuitar.textContent = 'Quitar';
+        btnQuitar.addEventListener('click', async ()=>{
+          await db.collection('diasSinClase').doc(d.id).delete();
+          cargarDiasSinClase_();
+        });
+        tr.lastElementChild.appendChild(btnQuitar);
+        tbody.appendChild(tr);
+      }
+    }catch(err){ /* si falla, la lista simplemente queda vacía */ }
+  }
+  cargarDiasSinClase_();
+
+  document.getElementById('btnMarcarDiaSinClase').addEventListener('click', async ()=>{
+    const curso = document.getElementById('diaSinClaseCurso').value;
+    const fecha = document.getElementById('diaSinClaseFecha').value;
+    const motivo = document.getElementById('diaSinClaseMotivo').value.trim();
+    const hint = document.getElementById('hintDiaSinClase');
+    if(!fecha){ hint.textContent = 'Selecciona una fecha primero.'; return; }
+    hint.textContent = 'Guardando…';
+    try{
+      await db.collection('diasSinClase').add({ curso, fecha, motivo: motivo || null });
+      hint.textContent = `✅ ${fecha} marcado como sin clase (${curso === 'todos' ? 'todos los cursos' : curso}). Vuelve a cargar la cuadrícula para verlo reflejado.`;
+      document.getElementById('diaSinClaseFecha').value = '';
+      document.getElementById('diaSinClaseMotivo').value = '';
+      cargarDiasSinClase_();
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
 
   document.getElementById('btnCargarAsistencia').addEventListener('click', async ()=>{
     const curso = document.getElementById('filtroCursoAsistencia').value;
@@ -1988,9 +2368,21 @@
     cuerpo.innerHTML = '';
     if(!curso){ resumen.textContent = 'Selecciona un curso primero.'; return; }
 
-    const resultado = generarFechasDeClase_(curso, trimestreAsistenciaActual);
+    // Consulta los días marcados a mano como "sin clase" (paros, suspensiones) — aplican
+    // si son para "todos" los cursos, o específicamente para este curso.
+    let fechasExtraSinClase = [];
+    try{
+      const snapDias = await db.collection('diasSinClase').get();
+      snapDias.forEach(doc => {
+        const d = doc.data();
+        if(d.curso === 'todos' || d.curso === curso) fechasExtraSinClase.push(d.fecha);
+      });
+    }catch(err){ /* si falla, simplemente no se excluye ninguna fecha extra */ }
+
+    const resultado = generarFechasDeClase_(curso, trimestreAsistenciaActual, fechasExtraSinClase);
     if(resultado.error){ resumen.textContent = '⚠ ' + resultado.error; return; }
     let fechas = resultado.fechas;
+    const rangoTrimestre = resultado.rango; // {inicio, fin} del trimestre activo, para el mensaje
 
     // Filtro por mes: compara el mes (0-11) de cada fecha AAAA-MM-DD.
     const mesSeleccionado = document.getElementById('filtroMesAsistencia').value;
@@ -2008,7 +2400,10 @@
       });
     }
 
-    if(!fechas.length){ resumen.textContent = 'No se generó ninguna fecha de clase con la configuración actual — revisa el calendario.'; return; }
+    if(!fechas.length){
+      resumen.textContent = `No hay clases en ese mes/semana para el Trimestre ${trimestreAsistenciaActual} (que va del ${rangoTrimestre.inicio} al ${rangoTrimestre.fin}) — revisa que el mes/semana que elegiste caiga dentro de ese rango, o cambia el "Trimestre activo del sistema" arriba en Notas y Boletín si buscas fechas de otro trimestre.`;
+      return;
+    }
 
     resumen.textContent = `Cargando ${fechas.length} fechas de clase…`;
     fechas.forEach(f=>{
@@ -2313,7 +2708,121 @@
     }
   });
 
+  // ============ Exportar bitácora de planeación (todos los temas del día guardados) ============
+  document.getElementById('btnExportarBitacora').addEventListener('click', async ()=>{
+    const hint = document.getElementById('hintTema');
+    hint.textContent = 'Generando bitácora…';
+    try{
+      const snap = await db.collection('temasDelDia').get();
+      const filas = [['Fecha','Curso','Trimestre','Tipos de clase','Tema visto']];
+      const registros = [];
+      snap.forEach(doc => registros.push(doc.data()));
+      registros.sort((a,b)=> (a.fecha||'').localeCompare(b.fecha||'') || (a.curso||'').localeCompare(b.curso||''));
+      const NOMBRES_TIPO = { taller:'Taller en clase', tarea:'Tarea para casa', evaluacion:'Evaluación', tablero:'Participación al tablero', participacion:'Participación en clase', otro:'Otro' };
+      registros.forEach(r => {
+        const tiposTexto = (r.tipos||[]).map(t=>NOMBRES_TIPO[t]||t).join(', ');
+        filas.push([r.fecha||'', r.curso||'', r.trimestre||'', tiposTexto, r.tema||'']);
+      });
+      const wsOut = XLSX.utils.aoa_to_sheet(filas);
+      const wbOut = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wbOut, wsOut, 'Bitacora');
+      XLSX.writeFile(wbOut, 'Bitacora_de_Planeacion.xlsx');
+      hint.textContent = `✅ ${registros.length} registro(s) exportados.`;
+    }catch(err){
+      hint.textContent = 'Error al exportar: ' + err.message;
+    }
+  });
+
   // ============ Registro de discrepancias ============
+  // ============ Registrar Proceso Formativo directo (el docente marca por el estudiante) ============
+  const ETIQUETAS_TIPO_PANEL = {
+    taller: { campo:'trabajoClase', pregunta:'Trabajó en clase' },
+    tarea: { campo:'hizoTarea', pregunta:'Hizo la tarea' },
+    tablero: { campo:'salioTablero', pregunta:'Salió al tablero' },
+    participacion: { campo:'participo', pregunta:'Participó en clase' }
+  };
+
+  document.getElementById('pfFecha').value = new Date().toISOString().slice(0,10);
+
+  document.getElementById('btnCargarProcesoFormativo').addEventListener('click', async ()=>{
+    const curso = document.getElementById('pfCurso').value;
+    const fecha = document.getElementById('pfFecha').value;
+    const resumen = document.getElementById('resumenProcesoFormativoPanel');
+    const filaEnc = document.getElementById('filaEncabezadoPFPanel');
+    const tbody = document.querySelector('#tablaProcesoFormativoPanel tbody');
+    filaEnc.innerHTML = '<th>Estudiante</th>';
+    tbody.innerHTML = '';
+    if(!fecha){ resumen.textContent = 'Selecciona una fecha.'; return; }
+    resumen.textContent = 'Cargando…';
+    try{
+      const snapTema = await db.collection('temasDelDia').doc(`${curso}_${fecha}`).get();
+      if(!snapTema.exists){
+        resumen.textContent = '⚠ No hay "Tema del día" guardado para esa fecha — guárdalo arriba primero, para saber qué preguntas aplican.';
+        return;
+      }
+      const tema = snapTema.data();
+      const preguntas = (tema.tipos||[]).map(t=>ETIQUETAS_TIPO_PANEL[t]).filter(Boolean);
+      if(!preguntas.length){
+        resumen.textContent = 'El tema de ese día no tiene tipos de clase con autorreporte (ej. solo "Evaluación" u "Otro") — nada que registrar aquí.';
+        return;
+      }
+      preguntas.forEach(p => { filaEnc.innerHTML += `<th>${p.pregunta}</th>`; });
+
+      const snap = await db.collection('boletines').where('curso','==', curso).get();
+      const estudiantes = [];
+      snap.forEach(doc => estudiantes.push({ id: doc.id, ...doc.data() }));
+      estudiantes.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+
+      for(const est of estudiantes){
+        const ti = est.ti || est.id;
+        const existente = (est.procesoFormativoDiario || {})[fecha] || {};
+        const tr = document.createElement('tr');
+        tr.dataset.ti = ti;
+        let fila = `<td>${est.nombre||''}</td>`;
+        for(const p of preguntas){
+          const valorActual = existente[p.campo] || '';
+          fila += `<td><select class="pfCampoEditable" data-campo="${p.campo}">
+            <option value="">—</option>
+            <option value="Si" ${valorActual==='Si'?'selected':''}>Sí</option>
+            <option value="AVeces" ${valorActual==='AVeces'?'selected':''}>A veces</option>
+            <option value="No" ${valorActual==='No'?'selected':''}>No</option>
+          </select></td>`;
+        }
+        tr.innerHTML = fila;
+        tbody.appendChild(tr);
+      }
+      resumen.textContent = `${estudiantes.length} estudiante(s) — tema: "${tema.tema||'(sin texto)'}"`;
+    }catch(err){
+      resumen.textContent = 'Error al cargar: ' + err.message;
+    }
+  });
+
+  document.getElementById('btnGuardarProcesoFormativoPanel').addEventListener('click', async ()=>{
+    const fecha = document.getElementById('pfFecha').value;
+    const trimestreActual = trimestreAsistenciaActual; // mismo "trimestre activo del sistema" ya construido
+    const hint = document.getElementById('hintProcesoFormativoPanel');
+    hint.textContent = 'Guardando…';
+    try{
+      const filas = document.querySelectorAll('#tablaProcesoFormativoPanel tbody tr');
+      let batch = db.batch();
+      let contador = 0;
+      for(const tr of filas){
+        const ti = tr.dataset.ti;
+        const registro = { fecha, trimestre: trimestreActual, discrepancia: false, editadoPorDocente: true };
+        tr.querySelectorAll('.pfCampoEditable').forEach(sel=>{
+          if(sel.value) registro[sel.dataset.campo] = sel.value;
+        });
+        batch.update(db.collection('boletines').doc(ti), { [`procesoFormativoDiario.${fecha}`]: registro });
+        contador++;
+        if(contador % 400 === 0){ await batch.commit(); batch = db.batch(); }
+      }
+      await batch.commit();
+      hint.textContent = `✅ Guardado para ${contador} estudiante(s).`;
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
   document.getElementById('btnCargarDiscrepancias').addEventListener('click', async ()=>{
     const curso = document.getElementById('discrepanciaCurso').value;
     const resumen = document.getElementById('resumenDiscrepancias');
@@ -2338,6 +2847,38 @@
   });
 
   // ============ Acudientes ============
+  // ============ Zona de riesgo: reiniciar campo "correo" de un curso completo ============
+  document.getElementById('btnReiniciarUsuarios').addEventListener('click', async ()=>{
+    const curso = document.getElementById('rrCurso').value;
+    const hint = document.getElementById('hintReiniciarUsuarios');
+    if(!curso){ hint.textContent = 'Selecciona un curso primero.'; return; }
+
+    const escrito = prompt(`Esto va a borrar el usuario de acceso de TODOS los estudiantes del curso ${curso}.\n\nEscribe el nombre del curso (ej: ${curso}) para confirmar:`);
+    if(escrito !== curso){
+      hint.textContent = escrito === null ? 'Cancelado.' : '⚠ El texto no coincidió con el curso — nada se borró, por seguridad.';
+      return;
+    }
+    if(!confirm(`Última confirmación: ¿SEGURO que quieres borrar el usuario de acceso de TODO el curso ${curso}? Esto no se puede deshacer.`)){
+      hint.textContent = 'Cancelado.';
+      return;
+    }
+
+    hint.textContent = 'Borrando…';
+    try{
+      const snap = await db.collection('boletines').where('curso','==', curso).get();
+      let batch = db.batch();
+      let contador = 0;
+      snap.forEach(doc => {
+        batch.update(doc.ref, { correo: firebase.firestore.FieldValue.delete() });
+        contador++;
+      });
+      await batch.commit();
+      hint.textContent = `✅ Campo "correo" borrado para ${contador} estudiante(s) del curso ${curso}. Recuerda también borrar sus cuentas en Firebase Console → Authentication (selección múltiple), y volver a subir el Excel de ese curso para regenerar los usuarios.`;
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
   document.getElementById('btnGuardarAcudiente').addEventListener('click', async ()=>{
     const ti = document.getElementById('acudienteTi').value.trim();
     const nombre = document.getElementById('acudienteNombre').value.trim();
@@ -2397,7 +2938,10 @@
       const opciones = ['<option value="">Selecciona…</option>'];
       snap.forEach(doc => {
         const d = doc.data();
-        opciones.push(`<option value="${doc.id}">${doc.id} (${d.categoria === 'actitudinal' ? 'Actitudinal' : 'Heteroevaluación'})</option>`);
+        const etiquetas = [];
+        if(d.esHeteroevaluacion) etiquetas.push('Heteroevaluación');
+        if(d.esActitudinal) etiquetas.push('Actitudinal');
+        opciones.push(`<option value="${doc.id}">${doc.id} (${etiquetas.join(' + ') || 'sin categoría'})</option>`);
       });
       opciones.push('<option value="__otro__">Otra (escribir el nombre manualmente)</option>');
       select.innerHTML = opciones.join('');
@@ -2439,9 +2983,76 @@
   }
 
   function fuentePlanMejora_(b, trimestre){
-    // Si ese trimestre ya está congelado, se usa su historial; si no, los campos en vivo.
-    return b[`trimestre${trimestre}`] || b;
+    // Cada trimestre vive SOLO en su propio campo — nunca se cae al documento completo.
+    return b[`trimestre${trimestre}`] || {};
   }
+
+  // ============ Configuración Académica — fechas de subcomisión ============
+  async function cargarFechasSubcomision_(){
+    try{
+      const snap = await db.collection('config').doc('fechasSubcomision').get();
+      const datos = snap.exists ? snap.data() : {};
+      for(const n of [1,2,3]){
+        const bloque = datos[`subcomision${n}`] || {};
+        document.getElementById(`fechaCorteT${n}`).value = bloque.corte || '';
+        document.getElementById(`fechaEntregaT${n}`).value = bloque.entrega || '';
+        document.getElementById(`fechaCierreT${n}`).value = bloque.cierre || '';
+      }
+    }catch(err){ /* si falla, los campos quedan vacíos, sin romper el resto del Panel */ }
+  }
+  cargarFechasSubcomision_();
+
+  document.getElementById('btnGuardarFechasSubcomision').addEventListener('click', async ()=>{
+    const hint = document.getElementById('hintFechasSubcomision');
+    hint.textContent = 'Guardando…';
+    try{
+      const datos = {};
+      for(const n of [1,2,3]){
+        datos[`subcomision${n}`] = {
+          corte: document.getElementById(`fechaCorteT${n}`).value || null,
+          entrega: document.getElementById(`fechaEntregaT${n}`).value || null,
+          cierre: document.getElementById(`fechaCierreT${n}`).value || null
+        };
+      }
+      await db.collection('config').doc('fechasSubcomision').set(datos, {merge:true});
+      hint.textContent = '✅ Fechas guardadas.';
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
+  async function cargarFechasIntegral_(){
+    try{
+      const snap = await db.collection('config').doc('fechasIntegral').get();
+      const datos = snap.exists ? snap.data() : {};
+      for(const n of [1,2,3]){
+        const bloque = datos[`integral${n}`] || {};
+        document.getElementById(`fechaCorteIntegralT${n}`).value = bloque.corte || '';
+        document.getElementById(`fechaEntregaIntegralT${n}`).value = bloque.entrega || '';
+        document.getElementById(`fechaCierreIntegralT${n}`).value = bloque.cierre || '';
+      }
+    }catch(err){ /* si falla, los campos quedan vacíos, sin romper el resto del Panel */ }
+  }
+  cargarFechasIntegral_();
+
+  document.getElementById('btnGuardarFechasIntegral').addEventListener('click', async ()=>{
+    const hint = document.getElementById('hintFechasIntegral');
+    hint.textContent = 'Guardando…';
+    try{
+      const datos = {};
+      for(const n of [1,2,3]){
+        datos[`integral${n}`] = {
+          corte: document.getElementById(`fechaCorteIntegralT${n}`).value || null,
+          entrega: document.getElementById(`fechaEntregaIntegralT${n}`).value || null,
+          cierre: document.getElementById(`fechaCierreIntegralT${n}`).value || null
+        };
+      }
+      await db.collection('config').doc('fechasIntegral').set(datos, {merge:true});
+      hint.textContent = '✅ Fechas guardadas.';
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
 
   document.getElementById('btnCargarPlanMejora').addEventListener('click', async ()=>{
     const curso = document.getElementById('pmCurso').value;
@@ -2470,10 +3081,29 @@
         }
         const existente = est[campoNombre] || {};
 
+        // Alerta roja: heteroevaluación reportada, O proceso formativo con la mitad o
+        // menos de respuestas "Sí" (participación/talleres) — ayuda a detectar rápido.
+        const reportes = est.procesoFormativoDiario || {};
+        let totalRespuestas = 0, totalSi = 0;
+        for(const fechaReg in reportes){
+          const r = reportes[fechaReg];
+          if(r.discrepancia) continue;
+          for(const campo of ['participo','trabajoClase','hizoTarea','salioTablero']){
+            if(r[campo]){ totalRespuestas++; if(r[campo]==='Si') totalSi++; }
+          }
+        }
+        const procesoEnRiesgo = totalRespuestas > 0 && (totalSi / totalRespuestas) <= 0.5;
+        const alertaRoja = reportadoAuto === 'Sí' || procesoEnRiesgo;
+
         const tr = document.createElement('tr');
         tr.dataset.ti = est.ti || est.id;
         tr.dataset.reportado = reportadoAuto;
+        if(alertaRoja) tr.style.background = '#FBE9E5';
+        let motivoAlerta = [];
+        if(reportadoAuto==='Sí') motivoAlerta.push('heteroevaluación baja');
+        if(procesoEnRiesgo) motivoAlerta.push(`proceso formativo (${totalSi}/${totalRespuestas} en Sí)`);
         tr.innerHTML = `
+          <td style="text-align:center;" title="${motivoAlerta.join(', ')||'Sin alertas'}">${alertaRoja ? '🔴' : ''}</td>
           <td>${est.nombre||''}</td>
           <td style="text-align:center; font-weight:700;">${reportadoAuto}</td>
           <td><select class="pmInformado"><option value="">—</option><option value="Sí" ${existente.informado==='Sí'?'selected':''}>Sí</option><option value="No" ${existente.informado==='No'?'selected':''}>No</option></select></td>
@@ -2532,12 +3162,6 @@
   });
 
   // ============ Preparar Actividad Nueva (ruta + línea de config, sin subir nada) ============
-  document.getElementById('naCategoria').addEventListener('change', ()=>{
-    const esHetero = document.getElementById('naCategoria').value === 'heteroevaluacion';
-    document.getElementById('naSubtiposHetero').classList.toggle('hidden', !esHetero);
-    document.getElementById('naSubtiposActitudinal').classList.toggle('hidden', esHetero);
-  });
-
   document.getElementById('btnPrepararActividad').addEventListener('click', async ()=>{
     const materia = document.getElementById('naMateria').value; // 'matematicas' o 'fisica'
     const grado = document.getElementById('naGrado').value; // 'sexto' o 'decimo'
@@ -2545,7 +3169,6 @@
     const carpeta = document.getElementById('naCarpeta').value.trim();
     const archivo = document.getElementById('naArchivo').value.trim();
     const nombreActividad = document.getElementById('naNombreActividad').value.trim();
-    const categoria = document.getElementById('naCategoria').value; // 'heteroevaluacion' o 'actitudinal'
 
     if(!carpeta || !archivo || !nombreActividad){
       alert('Completa el nombre de la carpeta, el archivo, y el nombre de la actividad.');
@@ -2556,28 +3179,64 @@
       return;
     }
 
-    // Misma convención de carpetas que ya usan tus 6 talleres actuales:
+    const cognitivo = document.getElementById('naCognitivo').checked;
+    const procedimental = document.getElementById('naProcedimental').checked;
+    const autoevaluacion = document.getElementById('naAutoevaluacion').checked;
+    const coevaluacion = document.getElementById('naCoevaluacion').checked;
+    if(!cognitivo && !procedimental && !autoevaluacion && !coevaluacion){
+      alert('Marca al menos una categoría — puede ser una sola, varias, o todas.');
+      return;
+    }
+    const esHeteroevaluacion = cognitivo || procedimental;
+    const esActitudinal = autoevaluacion || coevaluacion;
+
+    // Misma convención de carpetas que ya usan tus talleres actuales:
     // {materia}/{grado}/trimestre_{n}/{CARPETA}/{archivo}.html
     const ruta = `${materia}/${grado}/trimestre_${trimestre}/${carpeta}/${archivo}`;
     const nombreArchivoConfig = `config-trimestre${trimestre}.js`;
     const lineaConfig = `_registrarActividad(${trimestre}, '${nombreActividad.replace(/'/g,"\\'")}', '${ruta}');`;
+    const linkGithub = `https://el-profe-git.github.io/Colegio_2026/${ruta}`;
+    const linkCloudflare = `https://elprofeleoteexplica.elp22587.workers.dev/${ruta}`;
 
-    // Guarda la categoría de la actividad — el visor de planilla la usa después para
-    // filtrar/agrupar por sección (Heteroevaluación/Actitudinal, Cognitivo/Procedimental, etc.)
-    const subtipos = categoria === 'heteroevaluacion'
-      ? { cognitivo: document.getElementById('naCognitivo').checked, procedimental: document.getElementById('naProcedimental').checked }
-      : { autoevaluacion: document.getElementById('naAutoevaluacion').checked, coevaluacion: document.getElementById('naCoevaluacion').checked };
+    // Guarda TODAS las categorías marcadas — ahora sí admite combinaciones (una sola,
+    // varias, o las cuatro), no obliga a elegir un único tipo como antes.
     try{
       await db.collection('categoriasActividad').doc(nombreActividad).set({
-        nombre: nombreActividad, categoria, subtipos, curso: null, trimestre: Number(trimestre)
+        nombre: nombreActividad, esHeteroevaluacion, esActitudinal,
+        subtipos: { cognitivo, procedimental, autoevaluacion, coevaluacion },
+        curso: null, trimestre: Number(trimestre),
+        // El link se guarda aquí mismo — así el Boletín lo puede mostrar como hipervínculo
+        // clicable de forma automática, sin que tengas que editar ningún archivo aparte.
+        link: linkCloudflare, linkGithub: linkGithub
       });
     }catch(err){
       alert('La ruta se generó bien, pero no se pudo guardar la categoría: ' + err.message);
     }
 
+    // Fecha límite — en el MISMO paso, sin tener que ir a otra pestaña a configurarla.
+    const fechaLimite = document.getElementById('naFechaLimite').value;
+    const cajaConfirmacionFecha = document.getElementById('naConfirmacionFecha');
+    if(fechaLimite){
+      try{
+        await db.collection('fechasLimite').doc(nombreActividad).set({ actividad: nombreActividad, fecha: fechaLimite });
+        cajaConfirmacionFecha.textContent = `✅ Fecha límite guardada: ${fechaLimite}. El estudiante verá el aviso de "vencida" en su Boletín después de esa fecha si no ha presentado.`;
+        cajaConfirmacionFecha.style.color = 'var(--verde-leo-oscuro)';
+      }catch(err){
+        cajaConfirmacionFecha.textContent = 'La actividad quedó lista, pero no se pudo guardar la fecha límite: ' + err.message;
+        cajaConfirmacionFecha.style.color = 'var(--bad)';
+      }
+    }else{
+      cajaConfirmacionFecha.textContent = 'Sin fecha límite asignada — el estudiante no verá aviso de "vencida" para esta actividad hasta que le asignes una.';
+      cajaConfirmacionFecha.style.color = 'var(--slate)';
+    }
+
     document.getElementById('naRutaCompleta').textContent = ruta;
     document.getElementById('naNombreConfig').textContent = nombreArchivoConfig;
     document.getElementById('naLineaConfig').textContent = lineaConfig;
+    const linkGh = document.getElementById('naLinkGithub');
+    linkGh.textContent = linkGithub; linkGh.href = linkGithub;
+    const linkCf = document.getElementById('naLinkCloudflare');
+    linkCf.textContent = linkCloudflare; linkCf.href = linkCloudflare;
     document.getElementById('resultadoNuevaActividad').classList.remove('hidden');
   });
 
@@ -2617,8 +3276,12 @@
       estudiantes.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
 
       function fuenteDe(est){
-        if(trimestreSel === 'activo') return est;
-        return est[`trimestre${trimestreSel}`] || est;
+        // Cada trimestre vive SOLO en su propio campo — nunca hay caída a ningún otro
+        // lugar. Si ese trimestre no tiene datos todavía para este estudiante, se
+        // devuelve vacío, no el documento completo (que podría traer contenido de otro
+        // trimestre pegado por error).
+        const numeroReal = trimestreSel === 'activo' ? trimestreAsistenciaActual : Number(trimestreSel);
+        return est[`trimestre${numeroReal}`] || {};
       }
 
       // 3) Determinar qué actividades (columnas) mostrar, según la sección elegida.
@@ -2630,13 +3293,20 @@
       });
       const actividadesAMostrar = [...nombresActividad].filter(nombre => {
         if(seccion === 'todo') return true;
-        const cat = categorias[nombre] ? categorias[nombre].categoria : 'heteroevaluacion';
-        return cat === seccion;
+        const info = categorias[nombre];
+        // Sin categoría guardada -> se trata como Heteroevaluación por defecto (comportamiento
+        // de siempre). Con categoría guardada, una actividad puede aparecer en AMBAS secciones
+        // si se marcó como Heteroevaluación Y Actitudinal a la vez.
+        if(!info) return seccion === 'heteroevaluacion';
+        if(seccion === 'heteroevaluacion') return !!info.esHeteroevaluacion;
+        if(seccion === 'actitudinal') return !!info.esActitudinal;
+        return false;
       });
 
       const mostrarHetero = seccion === 'todo' || seccion === 'heteroevaluacion';
       const mostrarActitudinal = seccion === 'todo' || seccion === 'actitudinal';
       const mostrarFormativo = seccion === 'formativo'; // aparte, porque no comparte columnas con las otras 2
+      const mostrarDefinitiva = seccion === 'definitiva'; // igual, aparte — no depende del trimestre seleccionado
 
       const NOMBRES_CAMPO_FORMATIVO = { trabajoClase:'Trabajó en clase', hizoTarea:'Hizo la tarea', salioTablero:'Salió al tablero', participo:'Participó en clase' };
 
@@ -2653,6 +3323,9 @@
       }
       if(mostrarFormativo){
         filaEnc.innerHTML += Object.values(NOMBRES_CAMPO_FORMATIVO).map(n=>`<th>${n}</th>`).join('') + '<th>Discrepancias</th>';
+      }
+      if(mostrarDefinitiva){
+        filaEnc.innerHTML += '<th>Trimestre 1</th><th>Trimestre 2</th><th>Trimestre 3</th><th>Promedio Anual</th><th>Estado</th>';
       }
 
       // 5) Filas
@@ -2692,6 +3365,21 @@
           }
           fila += Object.keys(NOMBRES_CAMPO_FORMATIVO).map(c => `<td style="text-align:center;">${conteos[c]||0}</td>`).join('');
           fila += `<td style="text-align:center; ${discrepancias?'color:var(--bad); font-weight:700;':''}">${discrepancias}</td>`;
+        }
+        if(mostrarDefinitiva){
+          const t1 = est.trimestre1?.nota, t2 = est.trimestre2?.nota, t3 = est.trimestre3?.nota;
+          const celda = (v) => typeof v === 'number' ? v.toFixed(1) : '<span style="color:var(--slate);">—</span>';
+          fila += `<td style="text-align:center;">${celda(t1)}</td><td style="text-align:center;">${celda(t2)}</td><td style="text-align:center;">${celda(t3)}</td>`;
+          const notasCerradas = [t1,t2,t3].filter(n=>typeof n==='number');
+          if(notasCerradas.length === 3){
+            const promedio = (t1+t2+t3)/3;
+            const aprobado = promedio >= 3.4;
+            fila += `<td style="text-align:center; font-weight:700;" class="${aprobado?'nota-aprobada':'nota-en-riesgo'}">${promedio.toFixed(2)}</td>`;
+            fila += `<td style="text-align:center; font-weight:700; color:${aprobado?'var(--verde-leo-oscuro)':'var(--bad)'};">${aprobado?'✅ Aprobado':'⚠ No aprobado'}</td>`;
+          }else{
+            const faltan = 3 - notasCerradas.length;
+            fila += `<td style="text-align:center; color:var(--slate);">—</td><td style="text-align:center; color:var(--slate);">Falta${faltan>1?'n':''} ${faltan} trimestre${faltan>1?'s':''}</td>`;
+          }
         }
         tr.innerHTML = fila;
         tbody.appendChild(tr);
@@ -2759,14 +3447,11 @@
       snap.forEach(doc => estudiantes.push({ id: doc.id, ...doc.data() }));
       estudiantes.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
 
-      // Cada estudiante toma sus datos de la fuente correcta: si se pidió un trimestre
-      // congelado y ese estudiante SÍ lo tiene congelado, se usa ese historial; si se
-      // pidió "en curso" (o el trimestre pedido aún no está congelado para ese estudiante),
-      // se usan los campos en vivo.
+      // Cada trimestre vive SOLO en su propio campo — nunca hay caída al documento completo
+      // (que podría tener datos viejos pegados de antes, de un trimestre distinto).
       function fuenteDe(est){
-        if(trimestreSel === 'activo') return est;
-        const congelado = est[`trimestre${trimestreSel}`];
-        return congelado || est; // si no está congelado todavía, se cae de vuelta a los datos en vivo
+        const numeroReal = trimestreSel === 'activo' ? trimestreAsistenciaActual : Number(trimestreSel);
+        return est[`trimestre${numeroReal}`] || {};
       }
 
       const maxNotas = Math.max(1, ...estudiantes.map(e => (fuenteDe(e).notas || []).length));
@@ -2852,8 +3537,7 @@
       for(const est of estudiantes){
         const fila = [est.ti || est.id, est.nombre || ''];
         for(const n of [1,2,3]){
-          const congelado = est[`trimestre${n}`];
-          const fuente = congelado || (n===trimestreAsistenciaActual ? est : null);
+          const fuente = est[`trimestre${n}`] || null;
           fila.push(
             fuente && typeof fuente.clasesProgramadas==='number' ? fuente.clasesProgramadas : '',
             fuente && typeof fuente.clasesAsistidas==='number' ? fuente.clasesAsistidas : '',

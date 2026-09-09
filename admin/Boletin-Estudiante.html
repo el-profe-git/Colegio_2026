@@ -9,6 +9,13 @@
 <link rel="stylesheet" href="../tema-institucional.css">
 <style>
   *{box-sizing:border-box;}
+  .btn-menu{
+    background:#fff; border:1.5px solid var(--card-border); border-radius:8px;
+    padding:8px 14px; font-size:0.82rem; font-weight:700; cursor:pointer;
+    color:var(--slate); transition:all 180ms ease;
+  }
+  .btn-menu.activo{ background:var(--azul-leo); border-color:var(--azul-leo-oscuro); color:#fff; }
+  .btn-menu:hover:not(.activo){ border-color:var(--azul-leo); color:var(--azul-leo); }
   header{padding:14px 18px; border-bottom:2px solid var(--ink); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
   header img{height:40px;}
   main{max-width:720px; margin:0 auto; padding:16px;}
@@ -123,15 +130,22 @@
 
     <div class="card">
       <h2>📆 Boletín por Trimestre</h2>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <button class="btn-menu activo" id="tabT1" data-tab="1">Trimestre 1</button>
+        <button class="btn-menu" id="tabT2" data-tab="2">Trimestre 2</button>
+        <button class="btn-menu" id="tabT3" data-tab="3">Trimestre 3</button>
+        <button class="btn-menu" id="tabDefinitiva" data-tab="definitiva">📊 Definitiva del año</button>
+      </div>
       <!-- ============================================================
            BLOQUE VISUAL POR TRIMESTRE — separado a propósito de la lógica
            de cálculo, para poder agregar imagen/frase/animación por
            trimestre más adelante sin tocar el resto del archivo.
            Cada uno de estos 3 contenedores se llena con renderBloqueTrimestre_().
            ============================================================ -->
-      <div id="bloqueTrimestre1" class="bloque-trimestre"></div>
-      <div id="bloqueTrimestre2" class="bloque-trimestre"></div>
-      <div id="bloqueTrimestre3" class="bloque-trimestre"></div>
+      <div id="bloqueTrimestre1" class="bloque-trimestre tab-contenido"></div>
+      <div id="bloqueTrimestre2" class="bloque-trimestre tab-contenido hidden"></div>
+      <div id="bloqueTrimestre3" class="bloque-trimestre tab-contenido hidden"></div>
+      <div id="bloqueDefinitiva" class="tab-contenido hidden"></div>
     </div>
 
     <div class="card hidden" id="cardCalculoT3">
@@ -140,7 +154,7 @@
     </div>
 
     <div class="card">
-      <h2>Heteroevaluación — Trimestre 2 (70%)</h2>
+      <h2 id="tituloHeteroevaluacion">Heteroevaluación — Trimestre 2 (70%)</h2>
       <div class="tabla-scroll">
       <table id="tablaNotas">
         <thead><tr><th>Actividad</th><th style="text-align:right;">Aciertos</th><th style="text-align:right;">Tiempo</th><th style="text-align:right;">Nota</th><th style="text-align:right;">Aporta al 70%</th></tr></thead>
@@ -206,7 +220,7 @@
     </div>
 
     <div class="card">
-      <h2>📅 Asistencia — Trimestre 2</h2>
+      <h2 id="tituloAsistencia">📅 Asistencia — Trimestre 2</h2>
       <table>
         <tr><td>Clases programadas</td><td id="clasesProgTxt" style="text-align:right;">—</td></tr>
         <tr><td>Clases asistidas</td><td id="clasesAsisTxt" style="text-align:right;">—</td></tr>
@@ -215,7 +229,7 @@
     </div>
 
     <div class="card">
-      <h2>Proceso formativo (talleres)</h2>
+      <h2 id="tituloDetalleTalleres">🔧 Detalle de intentos por actividad — Trimestre 2</h2>
       <div id="talleresTxt"></div>
     </div>
 
@@ -329,7 +343,7 @@
     try{
       const cfgSnap = await db.collection('config').doc('boletin-consulta').get();
       const habilitado = cfgSnap.exists ? (cfgSnap.data().habilitado !== false) : true;
-      window.__alertaPlanMejoraT2Habilitada = cfgSnap.exists ? (cfgSnap.data().alertaPlanMejoraT2Habilitada !== false) : true;
+      window.__alertaPlanMejoraHabilitadaPorTrimestre = cfgSnap.exists ? (cfgSnap.data().alertaPlanMejoraPorTrimestre || {}) : {};
       window.__calculoNotaT3Habilitado = cfgSnap.exists ? (cfgSnap.data().calculoNotaT3Habilitado === true) : false;
       if(!habilitado){
         hint.textContent = 'La consulta del boletín está temporalmente deshabilitada por tu docente. Intenta más tarde.';
@@ -345,7 +359,7 @@
         return;
       }
       boletinActual = snap.docs[0].data();
-      mostrarBoletin(boletinActual);
+      await mostrarBoletin(boletinActual);
       document.getElementById('loginCard').classList.add('hidden');
       document.getElementById('reporte').classList.remove('hidden');
       document.getElementById('btnCerrarSesion').classList.remove('hidden');
@@ -371,16 +385,39 @@
     return v ? String(v) : '—';
   }
 
-  function mostrarBoletin(b){
+  async function mostrarBoletin(b){
     document.getElementById('nombreTxt').textContent = b.nombre || '';
     document.getElementById('datosTxt').textContent = `TI ${b.ti} · Curso ${b.curso}`;
+
+    // El trimestre activo del sistema se lee SIEMPRE del mismo lugar que usa el Panel del
+    // Docente (config/sistema) — nunca se infiere "cuál trimestre le falta congelar", porque
+    // ahora cada trimestre vive en su propio campo desde que se crea, no en uno compartido.
+    let numeroTrimestreActivoGlobal = 2;
+    try{
+      const snapSistema = await db.collection('config').doc('sistema').get();
+      numeroTrimestreActivoGlobal = (snapSistema.exists && snapSistema.data().trimestreActivo) ? Number(snapSistema.data().trimestreActivo) : 2;
+    }catch(err){ /* si falla, se usa 2 como respaldo, sin romper el resto del boletín */ }
+
+    // Links de actividades — se leen de Firestore (lo que se crea desde "Preparar
+    // Actividad Nueva" en el Panel), combinados con la lista fija vieja como respaldo
+    // por si alguna actividad antigua todavía solo vive ahí.
+    try{
+      const snapCategorias = await db.collection('categoriasActividad').get();
+      const linksDesdeFirestore = {};
+      snapCategorias.forEach(doc => {
+        const d = doc.data();
+        if(d.link) linksDesdeFirestore[doc.id] = d.link;
+      });
+      window.LINKS_ACTIVIDADES = { ...(window.LINKS_ACTIVIDADES||{}), ...linksDesdeFirestore };
+    }catch(err){ /* si falla, se sigue usando solo la lista fija, sin romper el resto */ }
 
     // Banners de actividades pendientes/vencidas — se calculan solos, comparando las
     // actividades sin nota todavía contra las fechas límite guardadas por el docente.
     (async function calcularBanners_(){
       try{
         const hoyIsoBanner = new Date().toISOString().slice(0,10);
-        const sinNota = (b.notas || []).filter(n => typeof n.nota !== 'number').map(n => n.actividad);
+        const notasDelTrimestreActivo = (b[`trimestre${numeroTrimestreActivoGlobal}`] || {}).notas || [];
+        const sinNota = notasDelTrimestreActivo.filter(n => typeof n.nota !== 'number').map(n => n.actividad);
         if(!sinNota.length) return;
         const snapFechas = await db.collection('fechasLimite').get();
         const fechasPorActividad = {};
@@ -430,22 +467,22 @@
       if(txt==='NO') return '<span class="badge" style="background:#FCE4E4;color:var(--bad);">No</span>';
       return '<span class="badge" style="background:#EEEEEA;color:var(--slate);">—</span>';
     }
-    function renderBloqueTrimestre_(numero, congelado, esElActivo){
+    function renderBloqueTrimestre_(numero, datosTrimestre, esElActivo){
       const cont = document.getElementById(`bloqueTrimestre${numero}`);
       const nombrePlan = NOMBRE_PLAN_POR_TRIMESTRE[numero];
       let notaHtml = '—', fechaHtml = '', planData = null;
 
-      if(congelado && typeof congelado.nota === 'number'){
-        const anterior = (typeof congelado.notaAnterior === 'number')
-          ? `<span style="color:var(--slate); font-weight:400;">${congelado.notaAnterior.toFixed(1)} → </span>` : '';
-        const claseNota = congelado.nota >= 3.4 ? 'nota-aprobada' : 'nota-en-riesgo';
-        notaHtml = anterior + `<span class="${claseNota}">${congelado.nota.toFixed(1)}</span>` + (congelado.corregido ? ' <span class="badge badge-recupero">RECUPERÓ</span>' : '');
-        if(congelado.fecha) fechaHtml = `<span class="fecha-trimestre">Cerrado el ${congelado.fecha}</span>`;
-        planData = congelado.planMejora || null;
-      }else if(esElActivo && typeof b.notaDefinitiva === 'number'){
-        const claseNota = b.notaDefinitiva >= 3.4 ? 'nota-aprobada' : 'nota-en-riesgo';
-        notaHtml = `<span class="${claseNota}">${b.notaDefinitiva.toFixed(1)}</span> <span style="font-size:0.7rem; color:var(--slate); font-weight:400;">(en curso)</span>`;
-        planData = b[CAMPO_PLAN_LIVE_POR_TRIMESTRE[numero]] || null;
+      // SIEMPRE se lee del propio trimestre — Trimestre 1 vive en trimestre1, Trimestre 2 en
+      // trimestre2, Trimestre 3 en trimestre3. Ya no existe un "en vivo" compartido que se
+      // pise entre trimestres al cambiar cuál está activo.
+      if(datosTrimestre && typeof datosTrimestre.notaDefinitiva === 'number'){
+        const anterior = (typeof datosTrimestre.notaAntesDeCorregir === 'number')
+          ? `<span style="color:var(--slate); font-weight:400;">${datosTrimestre.notaAntesDeCorregir.toFixed(1)} → </span>` : '';
+        const claseNota = datosTrimestre.notaDefinitiva >= 3.4 ? 'nota-aprobada' : 'nota-en-riesgo';
+        const etiquetaEnCurso = (esElActivo && !datosTrimestre.congelado) ? ' <span style="font-size:0.7rem; color:var(--slate); font-weight:400;">(en curso)</span>' : '';
+        notaHtml = anterior + `<span class="${claseNota}">${datosTrimestre.notaDefinitiva.toFixed(1)}</span>` + etiquetaEnCurso + (datosTrimestre.corregido ? ' <span class="badge badge-recupero">RECUPERÓ</span>' : '');
+        if(datosTrimestre.fechaCongelamiento) fechaHtml = `<span class="fecha-trimestre">Cerrado el ${datosTrimestre.fechaCongelamiento}</span>`;
+        planData = datosTrimestre.planMejora || null;
       }
 
       let planHtml = '';
@@ -465,9 +502,18 @@
       // de mejora de arriba), por eso se leen directo con el número de este bloque.
       function renderBloqueSeisCampos_(titulo, datos){
         if(!datos) return '';
+        const fueReportado = String(datos.reportado||'').trim() === 'Sí';
+        const bannerGrafico = fueReportado
+          ? `<div style="background:#FBE9E5; border:2px solid var(--bad); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:0.85rem; color:var(--bad); font-weight:700; text-align:center;">
+               ⚠ Estás en Plan de Mejora — habla con tu docente y no dejes pasar las fechas de entrega.
+             </div>`
+          : `<div style="background:#EAF3DD; border:2px solid var(--verde-leo); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:0.85rem; color:var(--verde-leo-oscuro); font-weight:700; text-align:center;">
+               🎉 ¡Vas bien! No estás reportado en Plan de Mejora en este corte.
+             </div>`;
         return `
           <div style="font-size:0.82rem; margin-top:10px; padding-top:8px; border-top:1px dashed #E3E1D8;">
             <div style="font-weight:700; margin-bottom:4px;">${titulo}</div>
+            ${bannerGrafico}
             <div style="display:flex; justify-content:space-between;"><span>Reportado</span>${badgeSiNo_(datos.reportado)}</div>
             <div style="display:flex; justify-content:space-between;"><span>Informado</span>${badgeSiNo_(datos.informado)}</div>
             <div style="display:flex; justify-content:space-between;"><span>Presentó evaluación</span>${badgeSiNo_(datos.presentoEvaluacion)}</div>
@@ -480,19 +526,19 @@
       const integralHtml = renderBloqueSeisCampos_(`Plan de Mejora Integral — Trimestre ${numero}`, b[`planMejoraIntegral${numero}`]);
 
       // Espacio reservado para personalización visual por trimestre (a futuro, desde el Panel):
-      const fraseHtml = congelado && congelado.frase ? `<div class="frase-docente">${congelado.frase}</div>` : '';
-      const imagenHtml = congelado && congelado.imagenUrl ? `<img class="imagen-trimestre" src="${congelado.imagenUrl}" alt="">` : '';
+      const fraseHtml = datosTrimestre && datosTrimestre.frase ? `<div class="frase-docente">${datosTrimestre.frase}</div>` : '';
+      const imagenHtml = datosTrimestre && datosTrimestre.imagenUrl ? `<img class="imagen-trimestre" src="${datosTrimestre.imagenUrl}" alt="">` : '';
 
       // Detalle histórico de autoevaluación/coevaluación y asistencia de ESE trimestre
       // (solo aparece en trimestres ya congelados, que sí guardan este detalle completo).
       let detalleHtml = '';
-      if(congelado){
+      if(datosTrimestre){
         const filasDetalle = [];
-        if(typeof congelado.autoevaluacion === 'number') filasDetalle.push(['Autoevaluación', congelado.autoevaluacion.toFixed(1)]);
-        if(typeof congelado.coevaluacion === 'number') filasDetalle.push(['Coevaluación', congelado.coevaluacion.toFixed(1)]);
-        if(typeof congelado.clasesProgramadas === 'number') filasDetalle.push(['Clases programadas', congelado.clasesProgramadas]);
-        if(typeof congelado.clasesAsistidas === 'number') filasDetalle.push(['Clases asistidas', congelado.clasesAsistidas]);
-        if(typeof congelado.clasesExcusadas === 'number') filasDetalle.push(['Ausencias excusadas', congelado.clasesExcusadas]);
+        if(typeof datosTrimestre.autoevaluacion === 'number') filasDetalle.push(['Autoevaluación', datosTrimestre.autoevaluacion.toFixed(1)]);
+        if(typeof datosTrimestre.coevaluacion === 'number') filasDetalle.push(['Coevaluación', datosTrimestre.coevaluacion.toFixed(1)]);
+        if(typeof datosTrimestre.clasesProgramadas === 'number') filasDetalle.push(['Clases programadas', datosTrimestre.clasesProgramadas]);
+        if(typeof datosTrimestre.clasesAsistidas === 'number') filasDetalle.push(['Clases asistidas', datosTrimestre.clasesAsistidas]);
+        if(typeof datosTrimestre.clasesExcusadas === 'number') filasDetalle.push(['Ausencias excusadas', datosTrimestre.clasesExcusadas]);
         if(filasDetalle.length){
           detalleHtml = `<div style="font-size:0.8rem; margin-top:8px; padding-top:8px; border-top:1px dashed #E3E1D8;">` +
             filasDetalle.map(([et,val])=>`<div style="display:flex; justify-content:space-between;"><span>${et}</span><b>${val}</b></div>`).join('') +
@@ -503,14 +549,62 @@
       cont.innerHTML = `<h3>Trimestre ${numero} ${fechaHtml}</h3><div style="text-align:right; font-size:1.1rem; font-weight:700;">${notaHtml}</div>${planHtml}${subcomisionHtml}${integralHtml}${detalleHtml}${fraseHtml}${imagenHtml}`;
     }
 
-    let yaEncontroActivo = false;
-    let numeroTrimestreActivoGlobal = 3; // por defecto, si los 3 ya están congelados
     for(const numero of [1,2,3]){
-      const congelado = b[`trimestre${numero}`];
-      const esElActivo = !congelado && !yaEncontroActivo;
-      if(esElActivo){ yaEncontroActivo = true; numeroTrimestreActivoGlobal = numero; }
-      renderBloqueTrimestre_(numero, congelado, esElActivo);
+      const datosTrimestre = b[`trimestre${numero}`];
+      const esElActivo = (numero === numeroTrimestreActivoGlobal);
+      renderBloqueTrimestre_(numero, datosTrimestre, esElActivo);
     }
+
+    // ============ Definitiva del año — promedio de los 3 trimestres ============
+    (function renderDefinitivaAnual_(){
+      const cont = document.getElementById('bloqueDefinitiva');
+      const notasCerradas = [1,2,3].map(n => b[`trimestre${n}`]).filter(t => t && typeof t.notaDefinitiva === 'number');
+      if(notasCerradas.length < 3){
+        const faltan = 3 - notasCerradas.length;
+        cont.innerHTML = `<div class="card" style="background:var(--paper);">
+          <p style="font-size:0.9rem;">Todavía faltan <b>${faltan}</b> trimestre(s) por cerrar para calcular tu definitiva del año.
+          Se van sumando automáticamente a medida que tu docente congele cada trimestre.</p>
+          ${notasCerradas.map((t,i)=>`<div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Trimestre ${i+1}</span><b>${t.notaDefinitiva.toFixed(1)}</b></div>`).join('')}
+        </div>`;
+        return;
+      }
+      const promedio = notasCerradas.reduce((s,t)=>s+t.notaDefinitiva,0) / 3;
+      const aprobo = promedio >= 3.4;
+      const claseColor = aprobo ? 'nota-aprobada' : 'nota-en-riesgo';
+      cont.innerHTML = `<div class="card">
+        ${[1,2,3].map(n => `<div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Trimestre ${n}</span><b>${b[`trimestre${n}`].notaDefinitiva.toFixed(1)}</b></div>`).join('')}
+        <div style="border-top:1.5px dashed #E3E1D8; margin-top:8px; padding-top:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:700;">Promedio anual</span>
+          <span class="${claseColor}" style="font-size:1.4rem; font-weight:800;">${promedio.toFixed(2)}</span>
+        </div>
+        <div style="text-align:center; margin-top:10px; font-weight:700; color:${aprobo ? 'var(--verde-leo-oscuro)' : 'var(--bad)'};">
+          ${aprobo ? '🎉 Año aprobado' : '⚠ Promedio anual por debajo de 3.4'}
+        </div>
+      </div>`;
+    })();
+
+    // ============ Pestañas del Boletín por Trimestre ============
+    document.querySelectorAll('#tabT1, #tabT2, #tabT3, #tabDefinitiva').forEach(boton=>{
+      boton.onclick = ()=>{
+        document.querySelectorAll('#tabT1, #tabT2, #tabT3, #tabDefinitiva').forEach(b=>b.classList.remove('activo'));
+        boton.classList.add('activo');
+        document.getElementById('bloqueTrimestre1').classList.add('hidden');
+        document.getElementById('bloqueTrimestre2').classList.add('hidden');
+        document.getElementById('bloqueTrimestre3').classList.add('hidden');
+        document.getElementById('bloqueDefinitiva').classList.add('hidden');
+        const tab = boton.dataset.tab;
+        const idMostrar = tab === 'definitiva' ? 'bloqueDefinitiva' : `bloqueTrimestre${tab}`;
+        document.getElementById(idMostrar).classList.remove('hidden');
+        // Las tarjetas de abajo (Heteroevaluación, Actitudinal, Asistencia, etc.) también
+        // cambian para reflejar el mismo trimestre — excepto en "Definitiva", donde no
+        // corresponde a un solo trimestre y se deja lo del trimestre activo tal cual está.
+        if(tab !== 'definitiva'){
+          renderContenidoDelTrimestre_(Number(tab));
+        }
+      };
+    });
+    // Al cargar, abre directo en el trimestre activo (no siempre el 1)
+    document.getElementById(`tabT${numeroTrimestreActivoGlobal}`)?.click();
 
     // ============ Proceso Formativo — Hoy (formulario adaptativo) ============
     const HOY_ISO = new Date().toISOString().slice(0,10);
@@ -594,62 +688,13 @@
       }
     })();
 
-    // ============ Resumen del proceso formativo (cuenta automática) ============
-    (function mostrarResumenProceso_(){
-      const reportes = b.procesoFormativoDiario || {};
-      const conteos = {};
-      for(const fecha in reportes){
-        const r = reportes[fecha];
-        if(r.discrepancia) continue; // no cuenta si quedó marcado como discrepancia
-        for(const campo in r){
-          if(campo==='fecha' || campo==='discrepancia') continue;
-          if(r[campo] === 'Si'){
-            conteos[campo] = (conteos[campo]||0) + 1;
-          }
-        }
-      }
-      const NOMBRES_CAMPO = { trabajoClase:'Trabajó en clase', hizoTarea:'Hizo la tarea', salioTablero:'Salió al tablero', participo:'Participó en clase' };
-      const filas = Object.keys(conteos).map(c => `<div style="display:flex; justify-content:space-between;"><span>${NOMBRES_CAMPO[c]||c}</span><b>${conteos[c]} veces</b></div>`);
-      document.getElementById('resumenProcesoTxt').innerHTML = filas.length ? filas.join('') : '<span style="color:var(--slate);">Todavía no hay registros de proceso formativo este trimestre.</span>';
-    })();
-
-    // ============ Constancia de conformidad (opcional, no bloquea nada) ============
-    const campoConstancia = `conformidadTrimestre${numeroTrimestreActivoGlobal}`;
-    const constanciaExistente = b[campoConstancia];
-    const btnConstancia = document.getElementById('btnConstancia');
-    const textoConstanciaGuardada = document.getElementById('textoConstanciaGuardada');
-    if(constanciaExistente && constanciaExistente.aceptado){
-      btnConstancia.disabled = true;
-      btnConstancia.textContent = 'Ya confirmaste esto ✓';
-      textoConstanciaGuardada.classList.remove('hidden');
-      textoConstanciaGuardada.textContent = `Confirmado el ${constanciaExistente.fecha}.`;
-    }else{
-      btnConstancia.disabled = false;
-      btnConstancia.textContent = 'Estoy de acuerdo con mis notas y certifico que mi proceso es genuino';
-      textoConstanciaGuardada.classList.add('hidden');
-      btnConstancia.onclick = async ()=>{
-        btnConstancia.disabled = true;
-        try{
-          const fechaHoy = new Date().toISOString().slice(0,10);
-          await db.collection('boletines').doc(b.ti).update({
-            [campoConstancia]: { aceptado: true, fecha: fechaHoy }
-          });
-          btnConstancia.textContent = 'Ya confirmaste esto ✓';
-          textoConstanciaGuardada.classList.remove('hidden');
-          textoConstanciaGuardada.textContent = `Confirmado el ${fechaHoy}.`;
-        }catch(err){
-          btnConstancia.disabled = false;
-          alert('No se pudo guardar: ' + err.message);
-        }
-      };
-    }
 
     // ============ Calculadora: qué nota necesitas en Trimestre 3 ============
     // Solo aparece si el docente la habilitó, estamos en T3 activo, y ya existen T1 y T2 congelados.
     const cardCalculo = document.getElementById('cardCalculoT3');
     const habilitadaCalculoT3 = window.__calculoNotaT3Habilitado === true;
     if(habilitadaCalculoT3 && numeroTrimestreActivoGlobal===3 && b.trimestre1 && b.trimestre2){
-      const notaT1 = b.trimestre1.nota, notaT2 = b.trimestre2.nota;
+      const notaT1 = b.trimestre1.notaDefinitiva, notaT2 = b.trimestre2.notaDefinitiva;
       const necesaria = (NOTA_MINIMA*3) - notaT1 - notaT2;
       let mensaje;
       if(necesaria <= 0){
@@ -665,134 +710,200 @@
       cardCalculo.classList.add('hidden');
     }
 
-    // Fecha límite para presentar actividades pendientes — actualiza esta fecha cada periodo.
-    const FECHA_LIMITE_TXT = '18 de agosto';
+    // ============ TODO lo que depende de "qué trimestre estoy viendo" vive aquí ============
+    // Esta función se llama al cargar (con el trimestre activo) Y cada vez que el
+    // estudiante cambia de pestaña — así Heteroevaluación, Actitudinal, Nota Definitiva,
+    // Asistencia, Detalle de talleres, Resumen de proceso formativo y Constancia SIEMPRE
+    // corresponden al trimestre que está viendo, sin mezclarse entre sí.
+    function renderContenidoDelTrimestre_(numero){
+      // SIEMPRE se lee del propio campo trimestreN — ya no existe un "en vivo" al que caer
+      // cuando el trimestre es el activo. Cada trimestre es dueño de sus propios datos desde
+      // que se crean (por Excel, por el estudiante presentando, o por autorreporte).
+      const fuente = b[`trimestre${numero}`] || {};
+      const esCerrado = !!fuente.congelado; // true solo si el docente ya lo Congeló
+      const notaDefinitivaFuente = fuente.notaDefinitiva;
 
-    const tablaBody = document.getElementById('tablaNotasBody');
-    tablaBody.innerHTML = '';
-    let suma=0, cuenta=0;
-    const totalActividades = (b.notas||[]).length;
-    (b.notas||[]).forEach(n=>{
-      const tr = document.createElement('tr');
-      let celdaNota, celdaAporte;
-      const celdaAciertos = (n.aciertos!==undefined && n.aciertos!==null) ? n.aciertos : '—';
-      const celdaTiempo = (n.tiempo!==undefined && n.tiempo!==null) ? n.tiempo+' min' : '—';
-      const link = (window.LINKS_ACTIVIDADES||{})[n.actividad];
-      const nombreActividadHtml = link
-        ? `<a href="${link}" target="_blank">${n.actividad||''}</a>`
-        : (n.actividad||'');
-      if(typeof n.nota === 'number'){
-        suma+=n.nota; cuenta++;
-        const aprobada = n.nota >= 3.4;
-        celdaNota = `<span class="${aprobada ? 'badge-nota-aprobada' : 'badge-nota-riesgo'}">${n.nota}</span>`;
-        const aporte = totalActividades ? (n.nota * 0.70 / totalActividades) : 0;
-        celdaAporte = aporte.toFixed(2);
-      }else{
-        celdaNota = `<span class="aviso-pendiente">Debe presentar la actividad antes del ${FECHA_LIMITE_TXT}</span>`;
-        celdaAporte = '—';
-      }
-      tr.innerHTML = `<td>${nombreActividadHtml}</td><td style="text-align:right;">${celdaAciertos}</td><td style="text-align:right;">${celdaTiempo}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
-      tablaBody.appendChild(tr);
-    });
-    document.getElementById('promHetero').textContent = cuenta ? (suma/cuenta).toFixed(2) : '—';
-    document.getElementById('acumulado70').textContent = cuenta ? ((suma/cuenta)*0.70).toFixed(2) : '—';
+      document.getElementById('tituloHeteroevaluacion').textContent = `Heteroevaluación — Trimestre ${numero} (70%)`;
+      document.getElementById('tituloAsistencia').textContent = `📅 Asistencia — Trimestre ${numero}`;
+      document.getElementById('tituloDetalleTalleres').textContent = `🔧 Detalle de intentos por actividad — Trimestre ${numero}`;
 
-    document.getElementById('autoevalTxt').textContent = b.autoevaluacion ?? '—';
-    document.getElementById('coevalTxt').textContent = b.coevaluacion ?? '—';
-    const linkAuto = (window.LINKS_ACTIVIDADES||{})['_AUTOEVALUACION'];
-    const cajaLinkAuto = document.getElementById('linkAutoevaluacion');
-    if(cajaLinkAuto){
-      if((b.autoevaluacion===undefined || b.autoevaluacion===null) && linkAuto){
-        cajaLinkAuto.innerHTML = `<a href="${linkAuto}" target="_blank">➡ Ir a responder tu autoevaluación y coevaluación</a>`;
-        cajaLinkAuto.classList.remove('hidden');
-      }else{
-        cajaLinkAuto.classList.add('hidden');
-      }
-    }
-    // Nota Definitiva: escala oficial 0.0 a 5.0. Si llega un valor fuera de ese rango
-    // (por error de digitación en la planilla, o un dato mal calculado), NO se muestra
-    // como si fuera correcta — se avisa que hay que revisarla con el docente.
-    const RANGO_VALIDO_MAX = 5.2; // pequeño margen por redondeos
-    const notaEsRazonable = (n) => typeof n==='number' && n>=0 && n<=RANGO_VALIDO_MAX;
-
-    const heteroProm = (typeof b.notaDefinitiva==='number' && suma && cuenta) ? (suma/cuenta) : null;
-    document.getElementById('desgloseHetero').textContent = heteroProm!==null ? (heteroProm*0.7).toFixed(2) : '—';
-    document.getElementById('desgloseAuto').textContent = notaEsRazonable(b.autoevaluacion) ? (b.autoevaluacion*0.2).toFixed(2) : '—';
-    document.getElementById('desgloseCo').textContent = notaEsRazonable(b.coevaluacion) ? (b.coevaluacion*0.1).toFixed(2) : '—';
-
-    if(notaEsRazonable(b.notaDefinitiva)){
-      document.getElementById('notaDefinitivaTxt').textContent = b.notaDefinitiva.toFixed(2);
-      document.getElementById('desgloseTotal').textContent = b.notaDefinitiva.toFixed(2);
-      document.getElementById('avisoNotaExtrana').classList.add('hidden');
-    }else if(typeof b.notaDefinitiva === 'number'){
-      // el dato existe pero está fuera de rango: no se muestra el número crudo
-      document.getElementById('notaDefinitivaTxt').textContent = '⚠';
-      document.getElementById('desgloseTotal').textContent = '—';
-      document.getElementById('avisoNotaExtrana').classList.remove('hidden');
-    }else{
-      document.getElementById('notaDefinitivaTxt').textContent = '—';
-      document.getElementById('desgloseTotal').textContent = '—';
-      document.getElementById('avisoNotaExtrana').classList.add('hidden');
-    }
-    document.getElementById('avisoDefinitivaPendiente').classList.toggle('hidden', typeof b.notaDefinitiva==='number');
-
-    // Aviso clave: si la nota definitiva SÍ existe pero autoeval/coeval están vacías, esa
-    // definitiva solo refleja el 70% heteroevaluación — no es la nota final real todavía.
-    const faltaActitudinal = !notaEsRazonable(b.autoevaluacion) || !notaEsRazonable(b.coevaluacion);
-    document.getElementById('avisoNotaParcial').classList.toggle('hidden', !(notaEsRazonable(b.notaDefinitiva) && faltaActitudinal));
-
-    // Observación del docente: solo se muestra si hay un número asignado en la planilla.
-    const cardObs = document.getElementById('cardObservacion');
-    const glosarioMateria = GLOSARIO_OBSERVACIONES[b.materia] || {};
-    const categorias = [
-      ['Cognitiva', b.observacionCognitiva],
-      ['Procedimental', b.observacionProcedimental],
-      ['Actitudinal', b.observacionActitudinal],
-      ['General', b.observacionGeneral],
-    ];
-    const partesObs = categorias
-      .filter(([_,num]) => num!==undefined && num!==null && String(num).trim()!=='' && glosarioMateria[String(num).trim()])
-      .map(([etiqueta,num]) => `<p><b>${etiqueta}:</b> ${glosarioMateria[String(num).trim()]}</p>`);
-    if(partesObs.length){
-      cardObs.classList.remove('hidden');
-      document.getElementById('observacionesBox').innerHTML = partesObs.join('');
-    }else{
-      cardObs.classList.add('hidden');
-    }
-
-    document.getElementById('clasesProgTxt').textContent = (typeof b.clasesProgramadas==='number') ? b.clasesProgramadas : '—';
-    document.getElementById('clasesAsisTxt').textContent = (typeof b.clasesAsistidas==='number') ? b.clasesAsistidas : '—';
-    document.getElementById('clasesExcTxt').textContent = (typeof b.clasesExcusadas==='number') ? b.clasesExcusadas : '—';
-
-    // alerta de plan de mejora si la definitiva esta por debajo del minimo, y el docente
-    // no la deshabilitó desde el Panel
-    const alerta = document.getElementById('alertaMejora');
-    const alertaHabilitadaPorDocente = window.__alertaPlanMejoraT2Habilitada !== false;
-    if(alertaHabilitadaPorDocente && typeof b.notaDefinitiva === 'number' && b.notaDefinitiva < NOTA_MINIMA){
-      alerta.classList.remove('hidden');
-    }else{
-      alerta.classList.add('hidden');
-    }
-
-    const talleresDiv = document.getElementById('talleresTxt');
-    talleresDiv.innerHTML = '';
-    (b.notas||[]).forEach(n=>{
-      if(!n.proceso || !n.proceso.length) return;
-      const bloque = document.createElement('div');
-      bloque.style.marginBottom = '10px';
-      bloque.innerHTML = `<div style="font-weight:700; font-size:0.85rem; color:var(--accent-dark); margin-bottom:4px;">${n.actividad}</div>`;
-      n.proceso.forEach(p=>{
-        const div = document.createElement('div');
-        div.className = 'taller-item';
-        div.innerHTML = `<span>${p.etiqueta}</span><span>${estadoTaller(p.valor)}</span>`;
-        bloque.appendChild(div);
+      const FECHA_LIMITE_TXT = '18 de agosto';
+      const tablaBody = document.getElementById('tablaNotasBody');
+      tablaBody.innerHTML = '';
+      let suma=0, cuenta=0;
+      const totalActividades = (fuente.notas||[]).length;
+      (fuente.notas||[]).forEach(n=>{
+        const tr = document.createElement('tr');
+        let celdaNota, celdaAporte;
+        const celdaAciertos = (n.aciertos!==undefined && n.aciertos!==null) ? n.aciertos : '—';
+        const celdaTiempo = (n.tiempo!==undefined && n.tiempo!==null) ? n.tiempo+' min' : '—';
+        const link = (window.LINKS_ACTIVIDADES||{})[n.actividad];
+        const nombreActividadHtml = link
+          ? `<a href="${link}" target="_blank">${n.actividad||''}</a>`
+          : (n.actividad||'');
+        if(typeof n.nota === 'number'){
+          suma+=n.nota; cuenta++;
+          const aprobada = n.nota >= 3.4;
+          celdaNota = `<span class="${aprobada ? 'badge-nota-aprobada' : 'badge-nota-riesgo'}">${n.nota}</span>`;
+          const aporte = totalActividades ? (n.nota * 0.70 / totalActividades) : 0;
+          celdaAporte = aporte.toFixed(2);
+        }else{
+          celdaNota = esCerrado ? '<span style="color:var(--slate);">No presentada</span>' : `<span class="aviso-pendiente">Debe presentar la actividad antes del ${FECHA_LIMITE_TXT}</span>`;
+          celdaAporte = '—';
+        }
+        tr.innerHTML = `<td>${nombreActividadHtml}</td><td style="text-align:right;">${celdaAciertos}</td><td style="text-align:right;">${celdaTiempo}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
+        tablaBody.appendChild(tr);
       });
-      talleresDiv.appendChild(bloque);
-    });
-    if(!talleresDiv.children.length) talleresDiv.innerHTML = '<div style="color:var(--slate); font-size:0.85rem;">Sin proceso formativo registrado.</div>';
+      document.getElementById('promHetero').textContent = cuenta ? (suma/cuenta).toFixed(2) : '—';
+      document.getElementById('acumulado70').textContent = cuenta ? ((suma/cuenta)*0.70).toFixed(2) : '—';
 
-    // (Plan de mejora T1/Sub2/Sub3 ahora se muestra fusionado dentro de renderBloqueTrimestre_, arriba)
+      document.getElementById('autoevalTxt').textContent = fuente.autoevaluacion ?? '—';
+      document.getElementById('coevalTxt').textContent = fuente.coevaluacion ?? '—';
+      const linkAuto = (window.LINKS_ACTIVIDADES||{})['_AUTOEVALUACION'];
+      const cajaLinkAuto = document.getElementById('linkAutoevaluacion');
+      if(cajaLinkAuto){
+        if(!esCerrado && (fuente.autoevaluacion===undefined || fuente.autoevaluacion===null) && linkAuto){
+          cajaLinkAuto.innerHTML = `<a href="${linkAuto}" target="_blank">➡ Ir a responder tu autoevaluación y coevaluación</a>`;
+          cajaLinkAuto.classList.remove('hidden');
+        }else{
+          cajaLinkAuto.classList.add('hidden');
+        }
+      }
+
+      const RANGO_VALIDO_MAX = 5.2;
+      const notaEsRazonable = (n) => typeof n==='number' && n>=0 && n<=RANGO_VALIDO_MAX;
+
+      const heteroProm = (typeof notaDefinitivaFuente==='number' && suma && cuenta) ? (suma/cuenta) : null;
+      document.getElementById('desgloseHetero').textContent = heteroProm!==null ? (heteroProm*0.7).toFixed(2) : '—';
+      document.getElementById('desgloseAuto').textContent = notaEsRazonable(fuente.autoevaluacion) ? (fuente.autoevaluacion*0.2).toFixed(2) : '—';
+      document.getElementById('desgloseCo').textContent = notaEsRazonable(fuente.coevaluacion) ? (fuente.coevaluacion*0.1).toFixed(2) : '—';
+
+      if(notaEsRazonable(notaDefinitivaFuente)){
+        document.getElementById('notaDefinitivaTxt').textContent = notaDefinitivaFuente.toFixed(2);
+        document.getElementById('desgloseTotal').textContent = notaDefinitivaFuente.toFixed(2);
+        document.getElementById('avisoNotaExtrana').classList.add('hidden');
+      }else if(typeof notaDefinitivaFuente === 'number'){
+        document.getElementById('notaDefinitivaTxt').textContent = '⚠';
+        document.getElementById('desgloseTotal').textContent = '—';
+        document.getElementById('avisoNotaExtrana').classList.remove('hidden');
+      }else{
+        document.getElementById('notaDefinitivaTxt').textContent = '—';
+        document.getElementById('desgloseTotal').textContent = '—';
+        document.getElementById('avisoNotaExtrana').classList.add('hidden');
+      }
+      document.getElementById('avisoDefinitivaPendiente').classList.toggle('hidden', esCerrado || typeof fuente.notaDefinitiva==='number');
+
+      const faltaActitudinal = !notaEsRazonable(fuente.autoevaluacion) || !notaEsRazonable(fuente.coevaluacion);
+      document.getElementById('avisoNotaParcial').classList.toggle('hidden', esCerrado || !(notaEsRazonable(notaDefinitivaFuente) && faltaActitudinal));
+
+      const cardObs = document.getElementById('cardObservacion');
+      const glosarioMateria = GLOSARIO_OBSERVACIONES[b.materia] || {};
+      const categorias = [
+        ['Cognitiva', fuente.observacionCognitiva],
+        ['Procedimental', fuente.observacionProcedimental],
+        ['Actitudinal', fuente.observacionActitudinal],
+        ['General', fuente.observacionGeneral],
+      ];
+      const partesObs = categorias
+        .filter(([_,num]) => num!==undefined && num!==null && String(num).trim()!=='' && glosarioMateria[String(num).trim()])
+        .map(([etiqueta,num]) => `<p><b>${etiqueta}:</b> ${glosarioMateria[String(num).trim()]}</p>`);
+      if(partesObs.length){
+        cardObs.classList.remove('hidden');
+        document.getElementById('observacionesBox').innerHTML = partesObs.join('');
+      }else{
+        cardObs.classList.add('hidden');
+      }
+
+      document.getElementById('clasesProgTxt').textContent = (typeof fuente.clasesProgramadas==='number') ? fuente.clasesProgramadas : '—';
+      document.getElementById('clasesAsisTxt').textContent = (typeof fuente.clasesAsistidas==='number') ? fuente.clasesAsistidas : '—';
+      document.getElementById('clasesExcTxt').textContent = (typeof fuente.clasesExcusadas==='number') ? fuente.clasesExcusadas : '—';
+
+      const alerta = document.getElementById('alertaMejora');
+      const alertaHabilitadaPorDocente = window.__alertaPlanMejoraHabilitadaPorTrimestre?.[numero] !== false;
+      if(!esCerrado && alertaHabilitadaPorDocente && typeof fuente.notaDefinitiva === 'number' && fuente.notaDefinitiva < NOTA_MINIMA){
+        alerta.classList.remove('hidden');
+      }else{
+        alerta.classList.add('hidden');
+      }
+
+      const talleresDiv = document.getElementById('talleresTxt');
+      talleresDiv.innerHTML = '';
+      (fuente.notas||[]).forEach(n=>{
+        if(!n.proceso || !n.proceso.length) return;
+        const bloque = document.createElement('div');
+        bloque.style.marginBottom = '10px';
+        bloque.innerHTML = `<div style="font-weight:700; font-size:0.85rem; color:var(--accent-dark); margin-bottom:4px;">${n.actividad}</div>`;
+        n.proceso.forEach(p=>{
+          const div = document.createElement('div');
+          div.className = 'taller-item';
+          div.innerHTML = `<span>${p.etiqueta}</span><span>${estadoTaller(p.valor)}</span>`;
+          bloque.appendChild(div);
+        });
+        talleresDiv.appendChild(bloque);
+      });
+      if(!talleresDiv.children.length) talleresDiv.innerHTML = '<div style="color:var(--slate); font-size:0.85rem;">Sin proceso formativo registrado en este trimestre.</div>';
+
+      // ============ Resumen del proceso formativo — SOLO del trimestre que se está viendo ============
+      const reportes = b.procesoFormativoDiario || {};
+      const conteos = {};
+      for(const fecha in reportes){
+        const r = reportes[fecha];
+        if(r.discrepancia) continue;
+        if(r.trimestre && Number(r.trimestre) !== Number(numero)) continue; // <-- el filtro que faltaba
+        for(const campo in r){
+          if(campo==='fecha' || campo==='discrepancia' || campo==='trimestre' || campo==='editadoPorDocente') continue;
+          if(r[campo] === 'Si'){
+            conteos[campo] = (conteos[campo]||0) + 1;
+          }
+        }
+      }
+      const NOMBRES_CAMPO = { trabajoClase:'Trabajó en clase', hizoTarea:'Hizo la tarea', salioTablero:'Salió al tablero', participo:'Participó en clase' };
+      const filas = Object.keys(conteos).map(c => `<div style="display:flex; justify-content:space-between;"><span>${NOMBRES_CAMPO[c]||c}</span><b>${conteos[c]} veces</b></div>`);
+      document.getElementById('resumenProcesoTxt').innerHTML = filas.length ? filas.join('') : `<span style="color:var(--slate);">Todavía no hay registros de proceso formativo en el Trimestre ${numero}.</span>`;
+
+      // ============ Constancia de conformidad — del trimestre que se está viendo ============
+      const campoConstancia = `conformidadTrimestre${numero}`;
+      const constanciaExistente = b[campoConstancia];
+      const btnConstancia = document.getElementById('btnConstancia');
+      const textoConstanciaGuardada = document.getElementById('textoConstanciaGuardada');
+      if(constanciaExistente && constanciaExistente.aceptado){
+        btnConstancia.disabled = true;
+        btnConstancia.textContent = 'Ya confirmaste esto ✓';
+        textoConstanciaGuardada.classList.remove('hidden');
+        textoConstanciaGuardada.textContent = `Confirmado el ${constanciaExistente.fecha}.`;
+      }else{
+        btnConstancia.disabled = false;
+        btnConstancia.textContent = 'Estoy de acuerdo con mis notas y certifico que mi proceso es genuino';
+        textoConstanciaGuardada.classList.add('hidden');
+        btnConstancia.onclick = async ()=>{
+          btnConstancia.disabled = true;
+          try{
+            const fechaHoy = new Date().toISOString().slice(0,10);
+            await db.collection('boletines').doc(b.ti).update({
+              [campoConstancia]: { aceptado: true, fecha: fechaHoy }
+            });
+            b[campoConstancia] = { aceptado: true, fecha: fechaHoy };
+            btnConstancia.textContent = 'Ya confirmaste esto ✓';
+            textoConstanciaGuardada.classList.remove('hidden');
+            textoConstanciaGuardada.textContent = `Confirmado el ${fechaHoy}.`;
+          }catch(err){
+            btnConstancia.disabled = false;
+            alert('No se pudo guardar: ' + err.message);
+          }
+        };
+      }
+
+      // "Proceso Formativo — Hoy" (autorreportar) solo tiene sentido en el trimestre
+      // activo real — un trimestre ya congelado no puede recibir un reporte de "hoy".
+      const cardProcesoHoy = document.getElementById('cardProcesoFormativo');
+      if(esCerrado) cardProcesoHoy.classList.add('hidden');
+    }
+
+    // (renderContenidoDelTrimestre_ se dispara solo, vía el clic simulado a la pestaña
+    // activa más abajo — no hace falta llamarla aquí también)
   }
+
+
 
   const PLANTILLAS_MENSAJE = {
     novedad: 'Quiero reportar la siguiente novedad o situación: ',

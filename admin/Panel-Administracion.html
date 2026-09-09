@@ -80,6 +80,8 @@
     <div>
       <h1>👑 Panel de Administración</h1>
       <span id="versionTxt"></span>
+    </div>
+  </div>
   <button class="btn secondary" id="btnCerrarSesion">🔒 Cerrar sesión</button>
 </header>
 
@@ -106,11 +108,56 @@
     </div>
 
     <div class="card">
+      <h2>📊 Resumen general del sistema</h2>
+      <button class="btn secondary mini" id="btnCargarDashboard" style="margin-bottom:10px;">🔄 Actualizar resumen</button>
+      <div id="cuerpoDashboard" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px;">
+        <div style="text-align:center; padding:10px; background:var(--paper); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800;" id="dashEstudiantes">—</div><div style="font-size:0.78rem; color:var(--slate);">Estudiantes</div></div>
+        <div style="text-align:center; padding:10px; background:var(--paper); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800;" id="dashDocentes">—</div><div style="font-size:0.78rem; color:var(--slate);">Docentes/Admins</div></div>
+        <div style="text-align:center; padding:10px; background:var(--paper); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800;" id="dashActividades">—</div><div style="font-size:0.78rem; color:var(--slate);">Actividades categorizadas</div></div>
+        <div style="text-align:center; padding:10px; background:#FBE9E5; border-radius:8px;"><div style="font-size:1.6rem; font-weight:800; color:var(--bad);" id="dashDiscrepancias">—</div><div style="font-size:0.78rem; color:var(--slate);">Discrepancias sin revisar</div></div>
+        <div style="text-align:center; padding:10px; background:var(--paper); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800;" id="dashTrimestreActivo">—</div><div style="font-size:0.78rem; color:var(--slate);">Trimestre activo</div></div>
+        <div style="text-align:center; padding:10px; background:var(--paper); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800;" id="dashConsulta">—</div><div style="font-size:0.78rem; color:var(--slate);">Consulta del Boletín</div></div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>📋 Docentes registrados</h2>
       <div id="resumenDocentes" style="font-size:0.85rem; margin-bottom:10px; font-weight:700;"></div>
       <div class="tabla-wrap">
         <table id="tablaDocentes">
-          <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Materias</th><th>Cursos</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Materias</th><th>Cursos</th><th>Estado</th><th></th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="cardEditarDocente" class="hidden" style="margin-top:14px; padding-top:12px; border-top:1.5px dashed #ccc;">
+        <h3 style="font-size:0.95rem;">✏️ Editando: <span id="editandoNombre"></span></h3>
+        <div class="fila">
+          <div class="campo"><label>Nombre completo</label><input type="text" id="editNombre" style="width:220px;"></div>
+          <div class="campo"><label>Rol</label>
+            <select id="editRol"><option value="docente">Docente</option><option value="admin">Administrador</option></select>
+          </div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>Materias (separadas por coma)</label><input type="text" id="editMaterias" style="width:220px;"></div>
+          <div class="campo"><label>Cursos (separados por coma)</label><input type="text" id="editCursos" style="width:220px;"></div>
+        </div>
+        <button class="btn" id="btnGuardarEdicionDocente">💾 Guardar cambios</button>
+        <button class="btn secondary" id="btnCancelarEdicionDocente">Cancelar</button>
+        <div id="hintEditarDocente" style="font-size:0.85rem; margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🚨 Discrepancias — todo el sistema</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Igual que en el Panel del Docente, pero viendo todos los cursos y materias a la vez —
+        útil para supervisar el sistema completo, no solo tu propia clase.
+      </div>
+      <button class="btn secondary" id="btnCargarDiscrepanciasAdmin">🔄 Consultar</button>
+      <div id="resumenDiscrepanciasAdmin" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
+      <div class="tabla-wrap">
+        <table id="tablaDiscrepanciasAdmin">
+          <thead><tr><th>Fecha</th><th>Curso</th><th>Estudiante</th><th>Detalle</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -200,6 +247,7 @@
       document.getElementById('loginCard').classList.add('hidden');
       document.getElementById('panel').classList.remove('hidden');
       cargarDocentes_();
+      cargarDashboard_();
     }catch(err){
       hint.textContent = 'Error: ' + err.message;
       document.getElementById('btnLogin').disabled = false;
@@ -228,8 +276,8 @@
         const materias = (d.materias||[]).join(', ');
         const cursos = (d.cursos||[]).join(', ');
         const estado = d.activo === false ? '🚫 Inactivo' : '✅ Activo';
-        tr.innerHTML = `<td>${d.nombre||''}</td><td>${d.correo}</td><td>${d.rol||'docente'}</td><td>${materias}</td><td>${cursos}</td><td>${estado}</td><td></td>`;
-        const tdBoton = tr.lastElementChild;
+        tr.innerHTML = `<td>${d.nombre||''}</td><td>${d.correo}</td><td>${d.rol||'docente'}</td><td>${materias}</td><td>${cursos}</td><td>${estado}</td><td></td><td></td>`;
+        const tdBoton = tr.children[6];
         const btn = document.createElement('button');
         btn.className = 'btn mini warn';
         btn.textContent = d.activo === false ? 'Reactivar' : 'Desactivar';
@@ -238,6 +286,21 @@
           cargarDocentes_();
         });
         tdBoton.appendChild(btn);
+
+        const tdEditar = tr.children[7];
+        const btnEditar = document.createElement('button');
+        btnEditar.className = 'btn mini secondary';
+        btnEditar.textContent = '✏️ Editar';
+        btnEditar.addEventListener('click', ()=>{
+          document.getElementById('cardEditarDocente').classList.remove('hidden');
+          document.getElementById('editandoNombre').textContent = `${d.nombre} (${d.correo})`;
+          document.getElementById('editNombre').value = d.nombre || '';
+          document.getElementById('editRol').value = d.rol || 'docente';
+          document.getElementById('editMaterias').value = materias;
+          document.getElementById('editCursos').value = cursos;
+          document.getElementById('btnGuardarEdicionDocente').dataset.correo = d.correo;
+        });
+        tdEditar.appendChild(btnEditar);
         tbody.appendChild(tr);
       }
     }catch(err){
@@ -276,6 +339,82 @@
       hint.textContent = 'Error: ' + err.message;
     }
   });
+  // ============ Editar un docente existente ============
+  document.getElementById('btnCancelarEdicionDocente').addEventListener('click', ()=>{
+    document.getElementById('cardEditarDocente').classList.add('hidden');
+  });
+  document.getElementById('btnGuardarEdicionDocente').addEventListener('click', async ()=>{
+    const correo = document.getElementById('btnGuardarEdicionDocente').dataset.correo;
+    const hint = document.getElementById('hintEditarDocente');
+    if(!correo){ hint.textContent = 'Error: no se identificó qué docente editar.'; return; }
+    hint.textContent = 'Guardando…';
+    try{
+      await db.collection('docentes').doc(correo).update({
+        nombre: document.getElementById('editNombre').value.trim(),
+        rol: document.getElementById('editRol').value,
+        materias: document.getElementById('editMaterias').value.split(',').map(s=>s.trim()).filter(Boolean),
+        cursos: document.getElementById('editCursos').value.split(',').map(s=>s.trim()).filter(Boolean)
+      });
+      hint.textContent = '✅ Guardado.';
+      cargarDocentes_();
+      setTimeout(()=>{ document.getElementById('cardEditarDocente').classList.add('hidden'); }, 800);
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
+  // ============ Dashboard general del sistema ============
+  async function cargarDashboard_(){
+    try{
+      const [snapBoletines, snapDocentes, snapCategorias, snapDiscrepancias, snapConfigSistema, snapConfigConsulta] = await Promise.all([
+        db.collection('boletines').get(),
+        db.collection('docentes').get(),
+        db.collection('categoriasActividad').get(),
+        db.collection('discrepancias').get(),
+        db.collection('config').doc('sistema').get(),
+        db.collection('config').doc('boletin-consulta').get()
+      ]);
+      let totalEstudiantes = 0; snapBoletines.forEach(()=>totalEstudiantes++);
+      let totalDocentes = 0; snapDocentes.forEach(()=>totalDocentes++);
+      let totalActividades = 0; snapCategorias.forEach(()=>totalActividades++);
+      let totalDiscrepancias = 0; snapDiscrepancias.forEach(()=>totalDiscrepancias++);
+      const trimestreActivo = snapConfigSistema.exists ? (snapConfigSistema.data().trimestreActivo || '—') : '—';
+      const consultaHabilitada = snapConfigConsulta.exists ? (snapConfigConsulta.data().habilitada !== false) : true;
+
+      document.getElementById('dashEstudiantes').textContent = totalEstudiantes;
+      document.getElementById('dashDocentes').textContent = totalDocentes;
+      document.getElementById('dashActividades').textContent = totalActividades;
+      document.getElementById('dashDiscrepancias').textContent = totalDiscrepancias;
+      document.getElementById('dashTrimestreActivo').textContent = trimestreActivo;
+      document.getElementById('dashConsulta').textContent = consultaHabilitada ? '✅ Habilitada' : '🚫 Deshabilitada';
+    }catch(err){
+      document.getElementById('cuerpoDashboard').innerHTML = `<div style="color:var(--bad);">Error al cargar: ${err.message}</div>`;
+    }
+  }
+  document.getElementById('btnCargarDashboard').addEventListener('click', cargarDashboard_);
+
+  // ============ Discrepancias de todo el sistema ============
+  document.getElementById('btnCargarDiscrepanciasAdmin').addEventListener('click', async ()=>{
+    const resumen = document.getElementById('resumenDiscrepanciasAdmin');
+    const tbody = document.querySelector('#tablaDiscrepanciasAdmin tbody');
+    tbody.innerHTML = '';
+    resumen.textContent = 'Cargando…';
+    try{
+      const snap = await db.collection('discrepancias').get();
+      const items = [];
+      snap.forEach(doc => items.push(doc.data()));
+      items.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+      resumen.textContent = `${items.length} discrepancia(s) en todo el sistema.`;
+      for(const d of items){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.fecha||''}</td><td>${d.curso||''}</td><td>${d.nombre||d.correo||''}</td><td>${d.detalle||''}</td>`;
+        tbody.appendChild(tr);
+      }
+    }catch(err){
+      resumen.textContent = 'Error al cargar: ' + err.message;
+    }
+  });
+
 })();
 </script>
 </body>
