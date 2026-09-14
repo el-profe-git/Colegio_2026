@@ -420,7 +420,7 @@
         <div class="campo"><label>Fecha</label><input type="date" id="temaFecha"></div>
         <div class="campo"><label>Trimestre</label>
           <select id="temaTrimestre">
-            <option value="1">Trimestre 1</option><option value="2" selected>Trimestre 2</option><option value="3">Trimestre 3</option>
+            <option value="1">Trimestre 1</option><option value="2">Trimestre 2</option><option value="3">Trimestre 3</option>
           </select>
         </div>
       </div>
@@ -662,6 +662,18 @@
         </select>
         <button class="btn secondary" id="btnCargarPlanMejora">🔄 Cargar</button>
       </div>
+      <div id="cardModoSubcomision" class="hidden" style="margin:10px 0; padding:10px; background:var(--paper); border-radius:8px;">
+        <label style="font-size:0.85rem; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+          <input type="radio" name="modoSubcomision" value="auto" id="modoSubcomisionAuto" checked>
+          Automático — cuentan las notas hasta la fecha de corte configurada arriba
+        </label>
+        <label style="font-size:0.85rem; display:flex; align-items:center; gap:6px;">
+          <input type="radio" name="modoSubcomision" value="manual" id="modoSubcomisionManual">
+          Manual — yo elijo exactamente qué actividades cuentan para esta Subcomisión
+        </label>
+        <div id="listaActividadesSubcomision" class="hidden" style="margin-top:8px; padding-left:20px;"></div>
+        <button class="btn secondary mini hidden" id="btnGuardarModoSubcomision" style="margin-top:8px;">💾 Guardar y recalcular</button>
+      </div>
       <div id="resumenPlanMejora" style="font-size:0.85rem; margin:8px 0; font-weight:700;"></div>
       <div class="tabla-wrap">
         <table id="tablaPlanMejora">
@@ -731,7 +743,12 @@
           <select id="naGrado"><option value="sexto">Sexto</option><option value="decimo">Décimo</option></select>
         </div>
         <div class="campo"><label>Trimestre</label>
-          <select id="naTrimestre"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>
+          <select id="naTrimestre"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+        </div>
+      </div>
+      <div class="fila">
+        <div class="campo"><label>¿Para todo el grado o solo un curso?</label>
+          <select id="naCurso"><option value="">Todo el grado (todos los cursos)</option></select>
         </div>
       </div>
       <div class="fila">
@@ -748,6 +765,19 @@
           <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naProcedimental"> Heteroevaluación — Procedimental</label>
           <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naAutoevaluacion"> Actitudinal — Autoevaluación</label>
           <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="naCoevaluacion"> Actitudinal — Coevaluación</label>
+        </div>
+      </div>
+      <div class="fila">
+        <div class="campo"><label>¿O es una actividad de recuperación (Plan de Mejora)? — si eliges una opción aquí, se desactivan las casillas de arriba: una actividad de recuperación NUNCA cuenta como heteroevaluación ni actitudinal, su nota se maneja aparte</label>
+          <select id="naPlanMejora">
+            <option value="">No — es una actividad normal</option>
+            <option value="integral-1">Plan de Mejora — Trimestre 1 (nota definitiva del trimestre)</option>
+            <option value="integral-2">Plan de Mejora — Trimestre 2 (nota definitiva del trimestre)</option>
+            <option value="integral-3">Plan de Mejora — Trimestre 3 (nota definitiva del trimestre)</option>
+            <option value="subcomision-1">Plan de Mejora — Subcomisión 1 (corte parcial del Trimestre 1)</option>
+            <option value="subcomision-2">Plan de Mejora — Subcomisión 2 (corte parcial del Trimestre 2)</option>
+            <option value="subcomision-3">Plan de Mejora — Subcomisión 3 (corte parcial del Trimestre 3)</option>
+          </select>
         </div>
       </div>
       <div class="fila">
@@ -770,6 +800,94 @@
         <a id="naLinkCloudflare" target="_blank" style="display:block; background:#fff; padding:8px; border-radius:6px; word-break:break-all;"></a>
         <div id="naConfirmacionFecha" style="margin-top:10px; font-size:0.82rem;"></div>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Actividades ya creadas</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Cambia el nombre, la fecha límite, o elimina una actividad ya registrada — esto
+        <b>no borra ni mueve ninguna nota ya guardada</b> de los estudiantes, solo actualiza
+        cómo se identifica y filtra la actividad en el sistema.
+      </div>
+      <div class="fila" style="margin-bottom:8px;">
+        <select id="filtroListaMateria">
+          <option value="">Todas las materias</option>
+          <option value="matematicas">Matemáticas</option><option value="fisica">Física</option>
+        </select>
+        <select id="filtroListaCurso">
+          <option value="">Todos los cursos</option>
+          <option value="602">602</option><option value="603">603</option>
+          <option value="1001">1001</option><option value="1002">1002</option><option value="1003">1003</option>
+        </select>
+      </div>
+      <button class="btn secondary mini" id="btnRefrescarListaActividades" style="margin-bottom:10px;">🔄 Actualizar lista</button>
+      <div class="tabla-wrap">
+        <table id="tablaActividadesCreadas" style="font-size:0.8rem;">
+          <thead><tr><th>Nombre</th><th>Materia</th><th>Trimestre</th><th>Curso</th><th>Tipo</th><th>Fecha límite</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="hintListaActividades" style="font-size:0.82rem; margin-top:8px;"></div>
+
+      <div id="cardEditarActividad" class="hidden" style="margin-top:14px; padding-top:12px; border-top:1.5px dashed #ccc;">
+        <h3 style="font-size:0.95rem;">✏️ Editando: <span id="editandoNombreActividad"></span></h3>
+        <div class="fila">
+          <div class="campo"><label>Nuevo nombre (debe coincidir exacto con la planilla de notas)</label>
+            <input type="text" id="editNombreActividad" style="min-width:260px;">
+          </div>
+          <div class="campo"><label>Materia</label>
+            <select id="editMateriaActividad"><option value="matematicas">Matemáticas</option><option value="fisica">Física</option></select>
+          </div>
+          <div class="campo"><label>Nueva fecha límite</label>
+            <input type="date" id="editFechaLimiteActividad">
+          </div>
+          <div class="campo"><label>¿Para todo el grado o solo un curso?</label>
+            <select id="editCursoActividad">
+              <option value="">Todo el grado (todos los cursos)</option>
+              <option value="602">Solo 602</option><option value="603">Solo 603</option>
+              <option value="1001">Solo 1001</option><option value="1002">Solo 1002</option><option value="1003">Solo 1003</option>
+            </select>
+          </div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>Esta actividad corresponde a (marca todas las que apliquen)</label>
+            <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="editCognitivo"> Heteroevaluación — Cognitivo</label>
+            <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="editProcedimental"> Heteroevaluación — Procedimental</label>
+            <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="editAutoevaluacion"> Actitudinal — Autoevaluación</label>
+            <label style="font-weight:400; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="editCoevaluacion"> Actitudinal — Coevaluación</label>
+          </div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>¿O es una actividad de recuperación (Plan de Mejora)? — elegir aquí desactiva las casillas de arriba</label>
+            <select id="editPlanMejora">
+              <option value="">No — es una actividad normal</option>
+              <option value="integral-1">Plan de Mejora — Trimestre 1</option>
+              <option value="integral-2">Plan de Mejora — Trimestre 2</option>
+              <option value="integral-3">Plan de Mejora — Trimestre 3</option>
+              <option value="subcomision-1">Plan de Mejora — Subcomisión 1</option>
+              <option value="subcomision-2">Plan de Mejora — Subcomisión 2</option>
+              <option value="subcomision-3">Plan de Mejora — Subcomisión 3</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn" id="btnGuardarEdicionActividad">💾 Guardar cambios</button>
+        <button class="btn secondary" id="btnCancelarEdicionActividad">Cancelar</button>
+        <div id="hintEditarActividad" style="font-size:0.85rem; margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🩺 Verificar por qué (no) aparece una actividad</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        Elige una actividad ya registrada y un estudiante — te digo exactamente si le
+        aparecería en su Boletín, y si no, cuál de las condiciones no se cumple.
+      </div>
+      <div class="fila">
+        <select id="diagActividad" style="min-width:260px;"></select>
+        <input type="text" id="diagTiEstudiante" placeholder="TI del estudiante">
+        <button class="btn secondary" id="btnDiagnosticar">🩺 Verificar</button>
+      </div>
+      <div id="resultadoDiagnostico" style="margin-top:10px; font-size:0.85rem; white-space:pre-wrap;"></div>
     </div>
 
     </div><!-- /vista-nuevaactividad -->
@@ -815,6 +933,24 @@
       <div style="font-size:0.72rem; color:var(--slate);">
         💡 Cada actividad (triángulos, física, matemáticas…) tiene su propia configuración independiente — pausar o cerrar una <b>no afecta a las demás</b>. La lista de arriba se llena sola con cualquier actividad nueva que se cree.
       </div>
+      <hr style="border:none; border-top:1.5px dashed #ccc; margin:12px 0;">
+      <div style="font-size:0.82rem; margin-bottom:6px; padding:10px; background:#FDECD9; border:1.5px solid var(--naranja-leo); border-radius:8px;">
+        <b>🔧 Corregir el trimestre de una actividad</b> — si una actividad quedó marcada con
+        el trimestre equivocado (porque el "trimestre activo del sistema" estaba mal cuando
+        los estudiantes la presentaron), corrígelo aquí. Esto cambia el trimestre guardado
+        en <b>todos los intentos</b> de esa actividad — la actividad empezará a aparecer bajo
+        el trimestre correcto en este menú, en Resultados, y en el Visor.
+      </div>
+      <div class="fila">
+        <select id="selectActividadCorregir" style="min-width:260px;"></select>
+        <select id="trimestreCorregirA">
+          <option value="1">Mover a Trimestre 1</option>
+          <option value="2">Mover a Trimestre 2</option>
+          <option value="3">Mover a Trimestre 3</option>
+        </select>
+        <button class="btn warn" id="btnCorregirTrimestreActividad">🔧 Corregir</button>
+      </div>
+      <div id="reporteCorregirTrimestre" style="font-size:0.8rem; margin-top:6px;"></div>
       <hr style="border:none; border-top:1.5px dashed #ccc; margin:12px 0;">
       <div class="fila">
         <span style="font-size:0.78rem; color:var(--slate);">Acción rápida sobre <b>todas</b> las actividades a la vez (no reemplaza el control individual de arriba):</span>
@@ -1326,6 +1462,10 @@
     const trimestreDestino = document.getElementById('selectTrimestreDestino').value; // '1', '2' o '3'
     try{
       reporte.textContent = 'Leyendo archivo…';
+      const snapCategoriasExcel = await db.collection('categoriasActividad').get();
+      const categoriasExcel = {};
+      snapCategoriasExcel.forEach(doc => { categoriasExcel[doc.id] = doc.data(); });
+
       const porHoja = await leerPlanillaElegida_(hojasElegidas_());
       let totalEstudiantes = 0, totalAvisos = [];
       const lineas = [];
@@ -1334,19 +1474,61 @@
         if(!estudiantes.length){ lineas.push(`${hoja}: 0 estudiantes (¿existe esa hoja en el archivo?)`); continue; }
         let batch = db.batch();
         let contador = 0;
+        const HOY_ISO_EXCEL = new Date().toISOString().slice(0,10);
+        // Se consultan las fechas que YA tenían las notas de este curso (de una subida
+        // anterior), para no pisarlas con la fecha de hoy solo por resubir el mismo Excel.
+        const fechasExistentesPorEstudiante = {};
+        try{
+          const snapExistente = await db.collection('boletines').where('curso','==', hoja).get();
+          snapExistente.forEach(doc=>{
+            const notasExistentes = (doc.data()[`trimestre${trimestreDestino}`]||{}).notas || [];
+            const mapa = {};
+            notasExistentes.forEach(n=>{ if(n.fecha) mapa[n.actividad] = n.fecha; });
+            fechasExistentesPorEstudiante[doc.id] = mapa;
+          });
+        }catch(err){ /* si falla, todas las notas de esta subida quedan con fecha de hoy */ }
         for(const est of estudiantes){
-          if(trimestreDestino === String(trimestreAsistenciaActual)){
-            // Comportamiento de siempre: escribe directo en los campos "en vivo" del boletín
-            // — pero ahora comparando contra el trimestre activo REAL, no fijo a "2".
-            batch.set(db.collection('boletines').doc(est.ti), est, {merge:true});
-          }else{
-            // Trimestre histórico (1 o 3): el detalle completo se guarda ANIDADO dentro de
-            // trimestreN, sin tocar ni un solo campo en vivo (notas actuales, asistencia, etc.)
-            batch.set(db.collection('boletines').doc(est.ti), {
-              [`trimestre${trimestreDestino}`]: est,
-              nombre: est.nombre, correo: est.correo, curso: est.curso, materia: est.materia
-            }, {merge:true});
+          // Se separan las actividades de Plan de Mejora (si el Excel trae una columna con
+          // ese nombre exacto) de las notas normales de heteroevaluación — nunca se mezclan.
+          // OJO: la recuperación va al trimestre que tiene REGISTRADO en "Preparar Actividad
+          // Nueva", que puede ser distinto del trimestre donde se está subiendo este Excel
+          // (ej. subes el Excel de Trimestre 2, pero la actividad es "Recuperación T1").
+          const notasNormales = [];
+          const recuperacionesIntegral = {}; // { 1: 3.9, ... } por si hay de varios trimestres en la misma fila
+          const recuperacionesSubcomision = {};
+          (est.notas || []).forEach(n=>{
+            const cat = categoriasExcel[n.actividad];
+            if(cat && cat.planMejoraTipo && typeof n.nota === 'number'){
+              const destinoRecuperacion = cat.planMejoraTrimestre || trimestreDestino;
+              if(cat.planMejoraTipo === 'integral') recuperacionesIntegral[destinoRecuperacion] = n.nota;
+              else recuperacionesSubcomision[destinoRecuperacion] = n.nota;
+            }else{
+              const fechaVieja = (fechasExistentesPorEstudiante[est.ti]||{})[n.actividad];
+              notasNormales.push({ ...n, fecha: fechaVieja || HOY_ISO_EXCEL });
+            }
+          });
+          const estSinPlanMejora = { ...est, notas: notasNormales };
+          // Si la recuperación es del MISMO trimestre que se está subiendo, se fusiona
+          // directo en el objeto (no se puede mezclar un objeto completo con una ruta de
+          // punto sobre el mismo campo padre en una sola escritura).
+          if(recuperacionesIntegral[trimestreDestino] !== undefined){
+            estSinPlanMejora.notaRecuperacion = recuperacionesIntegral[trimestreDestino];
+            delete recuperacionesIntegral[trimestreDestino];
           }
+
+          // SIEMPRE anidado en su propio trimestreN — ya no existe un "en vivo" compartido,
+          // sin importar si ese trimestre es el activo o no.
+          const actualizacion = {
+            [`trimestre${trimestreDestino}`]: estSinPlanMejora,
+            nombre: est.nombre, correo: est.correo, curso: est.curso, materia: est.materia
+          };
+          Object.entries(recuperacionesIntegral).forEach(([n, nota])=>{
+            actualizacion[`trimestre${n}.notaRecuperacion`] = nota;
+          });
+          Object.entries(recuperacionesSubcomision).forEach(([n, nota])=>{
+            actualizacion[`subcomision${n}.notaRecuperacion`] = nota;
+          });
+          batch.set(db.collection('boletines').doc(est.ti), actualizacion, {merge:true});
           contador++;
           if(contador % 400 === 0){ await batch.commit(); batch = db.batch(); }
         }
@@ -1645,15 +1827,25 @@
     const sel = document.getElementById('selectActividadConfig');
     const actual = sel.value;
     const trimestreFiltro = document.getElementById('filtroTrimestreActividadConfig').value;
-    let nombres = Array.from(new Set(todosLosIntentos.map(x=>x.actividad).filter(Boolean))).sort();
+
+    // La categoría se necesita SIEMPRE ahora (no solo cuando hay filtro) — porque una
+    // actividad recién creada, sin ningún intento todavía, solo se puede encontrar ahí.
+    if(!categoriasActividadCache_){
+      categoriasActividadCache_ = {};
+      try{
+        const snap = await db.collection('categoriasActividad').get();
+        snap.forEach(doc => { categoriasActividadCache_[doc.id] = doc.data(); });
+      }catch(err){ /* si falla, simplemente no se agregan actividades sin intentos aún */ }
+    }
+
+    // Se fusionan 2 fuentes: actividades con intentos de estudiantes, Y actividades ya
+    // registradas en "Preparar Actividad Nueva" aunque NADIE las haya presentado — para
+    // poder configurarlas (pausar, poner tiempo límite) ANTES de que las usen.
+    const nombresConIntentos = todosLosIntentos.map(x=>x.actividad).filter(Boolean);
+    const nombresRegistrados = Object.keys(categoriasActividadCache_);
+    let nombres = Array.from(new Set([...nombresConIntentos, ...nombresRegistrados])).sort();
+
     if(trimestreFiltro){
-      if(!categoriasActividadCache_){
-        categoriasActividadCache_ = {};
-        try{
-          const snap = await db.collection('categoriasActividad').get();
-          snap.forEach(doc => { categoriasActividadCache_[doc.id] = doc.data(); });
-        }catch(err){ /* si falla, el filtro simplemente no excluye nada por esta vía */ }
-      }
       // Fuente principal: el trimestre real de los INTENTOS de los estudiantes (más
       // confiable, porque no depende de que alguien haya categorizado la actividad a
       // mano). Si una actividad no tiene NINGÚN intento con trimestre guardado, se usa
@@ -1676,6 +1868,49 @@
     cargarConfigDeActividad();
   }
   document.getElementById('filtroTrimestreActividadConfig').addEventListener('change', poblarSelectorActividades);
+
+  function poblarSelectorCorregir_(){
+    const sel = document.getElementById('selectActividadCorregir');
+    const actual = sel.value;
+    // Sin filtrar por trimestre — aquí se necesita ver TODAS, incluida la que está mal
+    // ubicada, para poder corregirla.
+    const nombres = Array.from(new Set(todosLosIntentos.map(x=>x.actividad).filter(Boolean))).sort();
+    sel.innerHTML = nombres.map(n=>`<option value="${n}">${n}</option>`).join('') || '<option value="">(sin actividades registradas aún)</option>';
+    if(nombres.includes(actual)) sel.value = actual;
+  }
+
+  document.getElementById('btnCorregirTrimestreActividad').addEventListener('click', async ()=>{
+    const nombreActividad = document.getElementById('selectActividadCorregir').value;
+    const trimestreNuevo = document.getElementById('trimestreCorregirA').value;
+    const reporte = document.getElementById('reporteCorregirTrimestre');
+    if(!nombreActividad){ reporte.textContent = '⚠ Selecciona una actividad primero.'; return; }
+    if(!confirm(`¿Mover TODOS los intentos de "${nombreActividad}" a Trimestre ${trimestreNuevo}? Esto corrige dónde aparece en este menú, en Resultados y en el Visor.`)) return;
+
+    reporte.textContent = 'Corrigiendo…';
+    try{
+      const snap = await db.collection('intentos').where('actividad','==', nombreActividad).get();
+      let corregidos = 0;
+      const batch = db.batch();
+      snap.forEach(doc => {
+        batch.update(doc.ref, { trimestre: trimestreNuevo });
+        corregidos++;
+      });
+      await batch.commit();
+      // Actualiza también la copia local en memoria — si no, el filtro seguiría viendo
+      // el trimestre viejo hasta que se recargue la página.
+      todosLosIntentos.forEach(x => { if(x.actividad === nombreActividad) x.trimestre = trimestreNuevo; });
+      // También corrige la categoría guardada (si existe), para que "Preparar Actividad
+      // Nueva" y el Boletín coincidan con el trimestre ya corregido.
+      try{
+        await db.collection('categoriasActividad').doc(nombreActividad).set({ trimestre: Number(trimestreNuevo) }, {merge:true});
+      }catch(err){ /* si no existía categoría guardada, no pasa nada */ }
+      reporte.textContent = `✅ ${corregidos} intento(s) de "${nombreActividad}" movidos a Trimestre ${trimestreNuevo}.`;
+      categoriasActividadCache_ = null; // se refresca en la próxima consulta
+      poblarSelectorActividades();
+    }catch(err){
+      reporte.textContent = 'Error: ' + err.message;
+    }
+  });
 
   async function cargarConfigDeActividad(){
     const nombreActividad = document.getElementById('selectActividadConfig').value;
@@ -1820,6 +2055,7 @@
       snap.forEach(doc=> todosLosIntentos.push({id:doc.id, ...doc.data()}));
       seleccionados.clear();
       poblarSelectorActividades();
+      poblarSelectorCorregir_();
       pintarTabla();
       // Por defecto, Resultados muestra solo el trimestre activo del sistema — el docente
       // puede cambiarlo a "Todos" manualmente si quiere ver el histórico completo.
@@ -2063,30 +2299,78 @@
   document.getElementById('btnSincronizarIntentos').addEventListener('click', async ()=>{
     const reporte = document.getElementById('reportePlanilla');
     reporte.textContent = 'Sincronizando…';
+    const HOY_ISO_SYNC = new Date().toISOString().slice(0,10);
     try{
+      // Se necesita saber, por actividad, a qué trimestre pertenece y si es Plan de Mejora
+      // (y de qué tipo) — para enrutar la nota al lugar correcto, no a un solo balde.
+      const snapCategorias = await db.collection('categoriasActividad').get();
+      const categorias = {};
+      snapCategorias.forEach(doc => { categorias[doc.id] = doc.data(); });
+
       const mejores = obtenerMejoresIntentos_();
       const porDocumento = {};
       mejores.forEach(x=>{ (porDocumento[x.documento] = porDocumento[x.documento]||[]).push(x); });
 
-      let actualizados = 0, sinBoletin = [];
+      let actualizados = 0, sinBoletin = [], recuperaciones = 0;
       for(const [ti, intentos] of Object.entries(porDocumento)){
         const ref = db.collection('boletines').doc(ti);
         const snap = await ref.get();
         if(!snap.exists){ sinBoletin.push(`${intentos[0].apellidos} ${intentos[0].nombre} (TI ${ti})`); continue; }
         const boletin = snap.data();
-        const notas = boletin.notas ? boletin.notas.map(n=>({...n})) : [];
+
+        // Se agrupan los cambios por trimestre, porque cada trimestre vive en su propio
+        // campo — nunca se escribe en un "en vivo" compartido.
+        const notasPorTrimestre = {}; // { 1: [...], 2: [...], 3: [...] }
+        const recuperacionPorTrimestre = {}; // { 1: {tipo:'integral', nota:X}, ... }
+
         intentos.forEach(intento=>{
-          const idx = notas.findIndex(n=>n.actividad===intento.actividad);
+          const cat = categorias[intento.actividad];
+          const trimestreDeLaActividad = cat && cat.trimestre ? cat.trimestre : trimestreAsistenciaActual;
+
+          if(cat && cat.planMejoraTipo){
+            // Es una actividad de recuperación — NO va a notas[], va a un campo aparte.
+            recuperacionPorTrimestre[cat.planMejoraTrimestre] = { tipo: cat.planMejoraTipo, nota: intento.nota };
+            recuperaciones++;
+            return;
+          }
+
+          if(!notasPorTrimestre[trimestreDeLaActividad]) notasPorTrimestre[trimestreDeLaActividad] = null; // se llena abajo
+          const yaExistentes = (boletin[`trimestre${trimestreDeLaActividad}`] || {}).notas || [];
+          if(!notasPorTrimestre[trimestreDeLaActividad]) notasPorTrimestre[trimestreDeLaActividad] = yaExistentes.map(n=>({...n}));
+          const notasDeEsteTrimestre = notasPorTrimestre[trimestreDeLaActividad];
+          const idx = notasDeEsteTrimestre.findIndex(n=>n.actividad===intento.actividad);
           const datos = { actividad: intento.actividad, nota: intento.nota,
             version: intento.version ? 'V'+String(intento.version).padStart(2,'0') : undefined,
             aciertos: intento.puntos, tiempo: intento.segundosUsados ? Math.round(intento.segundosUsados/60*100)/100 : undefined };
-          if(idx>=0) notas[idx] = {...notas[idx], ...datos};
-          else notas.push(datos);
+          if(idx>=0){
+            // Se actualiza la nota, pero se conserva la fecha original — resincronizar
+            // no debe "mover" cuándo se considera que se registró esta nota.
+            notasDeEsteTrimestre[idx] = {...notasDeEsteTrimestre[idx], ...datos};
+          }else{
+            notasDeEsteTrimestre.push({...datos, fecha: HOY_ISO_SYNC});
+          }
         });
-        await ref.update({notas});
-        actualizados++;
+
+        const actualizacion = {};
+        Object.entries(notasPorTrimestre).forEach(([n, notas])=>{
+          actualizacion[`trimestre${n}.notas`] = notas;
+        });
+        Object.entries(recuperacionPorTrimestre).forEach(([n, rec])=>{
+          if(rec.tipo === 'integral'){
+            actualizacion[`trimestre${n}.notaRecuperacion`] = rec.nota;
+          }else{
+            // Subcomisión vive en su propio campo (subcomisionN), junto con reportado/
+            // informado/resultado — no dentro de trimestreN.
+            actualizacion[`subcomision${n}.notaRecuperacion`] = rec.nota;
+          }
+        });
+        if(Object.keys(actualizacion).length){
+          await ref.update(actualizacion);
+          actualizados++;
+        }
       }
       let texto = `✅ Sincronizado.\n${actualizados} boletines actualizados con la mejor nota de cada actividad.`;
+      if(recuperaciones) texto += `\n${recuperaciones} nota(s) de recuperación (Plan de Mejora) guardadas aparte, sin tocar la nota original.`;
       if(sinBoletin.length) texto += `\n\n⚠ ${sinBoletin.length} estudiante(s) sin boletín todavía (no se tocaron, primero sube su planilla):\n` + sinBoletin.map(s=>'  · '+s).join('\n');
       reporte.textContent = texto;
     }catch(err){
@@ -2261,14 +2545,21 @@
   // como "histórico" en vez de "en vivo", sin que las pestañas del Boletín las mostraran.
   function sincronizarDropdownSubida_(){
     const sel = document.getElementById('selectTrimestreDestino');
-    if(!sel) return;
-    for(const opcion of sel.options){
-      const n = opcion.value;
-      opcion.textContent = (n === String(trimestreAsistenciaActual))
-        ? `Trimestre ${n} (en curso — así funciona hoy)`
-        : `Trimestre ${n} (histórico — no toca el trimestre en curso)`;
+    if(sel){
+      for(const opcion of sel.options){
+        const n = opcion.value;
+        opcion.textContent = (n === String(trimestreAsistenciaActual))
+          ? `Trimestre ${n} (en curso — así funciona hoy)`
+          : `Trimestre ${n} (histórico — no toca el trimestre en curso)`;
+      }
+      sel.value = String(trimestreAsistenciaActual);
     }
-    sel.value = String(trimestreAsistenciaActual);
+    // Mismo trimestre activo real, en los otros selectores que antes se quedaban fijos
+    // (uno con "Trimestre 2" escrito a mano, el otro cayendo siempre a la primera opción).
+    ['temaTrimestre','pmTrimestre'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.value = String(trimestreAsistenciaActual);
+    });
   }
 
   async function activarTrimestre_(numero){
@@ -2976,8 +3267,14 @@
   // ============ Planes de Mejora (Subcomisión / Integral, mismo componente x6) ============
   const NOTA_MINIMA_PM = 3.4;
 
-  function promedioHeteroevaluacion_(notas){
-    const conNota = (notas||[]).filter(n => typeof n.nota === 'number');
+  function promedioHeteroevaluacion_(notas, fechaCorte){
+    let conNota = (notas||[]).filter(n => typeof n.nota === 'number');
+    if(fechaCorte){
+      // Una nota SIN fecha guardada (todo lo subido antes de esta función existir)
+      // cuenta como "antes del corte" — no se descarta por falta de dato, ya que
+      // sabemos que esas notas viejas sí se tuvieron en cuenta en su momento.
+      conNota = conNota.filter(n => !n.fecha || n.fecha <= fechaCorte);
+    }
     if(!conNota.length) return null;
     return conNota.reduce((s,n)=>s+n.nota,0) / conNota.length;
   }
@@ -3054,6 +3351,78 @@
     }
   });
 
+  // ============ Modo Subcomisión: automático (por fecha) o manual (elegir actividades) ============
+  async function actualizarControlModoSubcomision_(){
+    const tipo = document.getElementById('pmTipo').value;
+    const card = document.getElementById('cardModoSubcomision');
+    if(tipo !== 'subcomision'){ card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+
+    const curso = document.getElementById('pmCurso').value;
+    const trimestre = document.getElementById('pmTrimestre').value;
+
+    // Cargar el modo ya guardado para este curso+trimestre.
+    let modoGuardado = 'auto', actividadesGuardadas = [];
+    try{
+      const snap = await db.collection('config').doc('modoSubcomision').get();
+      const bloque = snap.exists ? snap.data()[`${curso}-${trimestre}`] : null;
+      if(bloque && bloque.modo === 'manual'){ modoGuardado = 'manual'; actividadesGuardadas = bloque.actividades || []; }
+    }catch(err){ /* si falla, se asume automático */ }
+    document.getElementById('modoSubcomisionAuto').checked = modoGuardado === 'auto';
+    document.getElementById('modoSubcomisionManual').checked = modoGuardado === 'manual';
+
+    // Listar las actividades de heteroevaluación disponibles para este curso+trimestre,
+    // para poder elegir cuáles cuentan.
+    const lista = document.getElementById('listaActividadesSubcomision');
+    try{
+      const snapCat = await db.collection('categoriasActividad').get();
+      const actividades = [];
+      snapCat.forEach(doc=>{
+        const d = doc.data();
+        if(!d.esHeteroevaluacion) return;
+        if(Number(d.trimestre) !== Number(trimestre)) return;
+        if(d.curso && String(d.curso) !== String(curso)) return;
+        actividades.push(doc.id);
+      });
+      lista.innerHTML = actividades.length
+        ? actividades.map(nombre => `<label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; margin-bottom:4px;"><input type="checkbox" class="checkActividadSubcomision" value="${nombre}" ${actividadesGuardadas.includes(nombre)?'checked':''}> ${nombre}</label>`).join('')
+        : '<span style="font-size:0.82rem; color:var(--slate);">No hay actividades de heteroevaluación registradas para este curso y trimestre todavía.</span>';
+    }catch(err){
+      lista.innerHTML = '<span style="font-size:0.82rem; color:var(--bad);">No se pudo cargar la lista de actividades.</span>';
+    }
+
+    const esManual = document.getElementById('modoSubcomisionManual').checked;
+    lista.classList.toggle('hidden', !esManual);
+    document.getElementById('btnGuardarModoSubcomision').classList.toggle('hidden', !esManual);
+  }
+  ['pmTipo','pmCurso','pmTrimestre'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', actualizarControlModoSubcomision_);
+  });
+  actualizarControlModoSubcomision_();
+
+  document.querySelectorAll('input[name="modoSubcomision"]').forEach(radio=>{
+    radio.addEventListener('change', ()=>{
+      const esManual = document.getElementById('modoSubcomisionManual').checked;
+      document.getElementById('listaActividadesSubcomision').classList.toggle('hidden', !esManual);
+      document.getElementById('btnGuardarModoSubcomision').classList.toggle('hidden', !esManual);
+    });
+  });
+
+  document.getElementById('btnGuardarModoSubcomision').addEventListener('click', async ()=>{
+    const curso = document.getElementById('pmCurso').value;
+    const trimestre = document.getElementById('pmTrimestre').value;
+    const esManual = document.getElementById('modoSubcomisionManual').checked;
+    const actividadesElegidas = [...document.querySelectorAll('.checkActividadSubcomision:checked')].map(el=>el.value);
+    try{
+      await db.collection('config').doc('modoSubcomision').set({
+        [`${curso}-${trimestre}`]: esManual ? { modo: 'manual', actividades: actividadesElegidas } : { modo: 'auto' }
+      }, {merge:true});
+      document.getElementById('btnCargarPlanMejora').click(); // recalcula con el modo nuevo
+    }catch(err){
+      alert('Error al guardar: ' + err.message);
+    }
+  });
+
   document.getElementById('btnCargarPlanMejora').addEventListener('click', async ()=>{
     const curso = document.getElementById('pmCurso').value;
     const tipo = document.getElementById('pmTipo').value; // 'subcomision' o 'integral'
@@ -3064,6 +3433,22 @@
     tbody.innerHTML = '';
     resumen.textContent = 'Cargando…';
     try{
+      // Fecha de corte real de esta subcomisión — para saber qué notas "contaban" en ese
+      // momento, no las que hay hoy. Solo se usa si el modo es "automático" — si el
+      // docente eligió "manual", se usa la lista de actividades elegidas en su lugar.
+      let fechaCorteSubcomision = null;
+      let actividadesManualSubcomision = null; // null = modo automático
+      if(tipo === 'subcomision'){
+        try{
+          const snapFechas = await db.collection('config').doc('fechasSubcomision').get();
+          fechaCorteSubcomision = snapFechas.exists ? (snapFechas.data()[`subcomision${trimestre}`]||{}).corte || null : null;
+        }catch(err){ /* si falla, se calcula sin filtrar por fecha, como antes */ }
+        try{
+          const snapModo = await db.collection('config').doc('modoSubcomision').get();
+          const bloqueModo = snapModo.exists ? snapModo.data()[`${curso}-${trimestre}`] : null;
+          if(bloqueModo && bloqueModo.modo === 'manual') actividadesManualSubcomision = bloqueModo.actividades || [];
+        }catch(err){ /* si falla, se usa el modo automático */ }
+      }
       const snap = await db.collection('boletines').where('curso','==', curso).get();
       const estudiantes = [];
       snap.forEach(doc => estudiantes.push({ id: doc.id, ...doc.data() }));
@@ -3073,7 +3458,12 @@
         const fuente = fuentePlanMejora_(est, trimestre);
         let reportadoAuto;
         if(tipo === 'subcomision'){
-          const prom = promedioHeteroevaluacion_(fuente.notas);
+          const notasParaEsteCalculo = actividadesManualSubcomision
+            ? (fuente.notas||[]).filter(n => actividadesManualSubcomision.includes(n.actividad))
+            : fuente.notas;
+          const prom = actividadesManualSubcomision
+            ? promedioHeteroevaluacion_(notasParaEsteCalculo) // ya vienen filtradas, sin fecha de corte
+            : promedioHeteroevaluacion_(notasParaEsteCalculo, fechaCorteSubcomision);
           reportadoAuto = (prom !== null && prom < NOTA_MINIMA_PM) ? 'Sí' : 'No';
         }else{
           const def = typeof fuente.notaDefinitiva === 'number' ? fuente.notaDefinitiva : (typeof fuente.nota === 'number' ? fuente.nota : null);
@@ -3162,6 +3552,381 @@
   });
 
   // ============ Preparar Actividad Nueva (ruta + línea de config, sin subir nada) ============
+  const CURSOS_POR_GRADO = { sexto: ['602','603'], decimo: ['1001','1002','1003'] };
+  // Materia y Grado NUNCA se eligen por separado — en este colegio, Matemáticas siempre
+  // es Sexto y Física siempre es Décimo. El Grado se sincroniza solo, y se deshabilita
+  // para no permitir una combinación que no existe en la realidad (ej. Física + Sexto).
+  const GRADO_POR_MATERIA = { matematicas: 'sexto', fisica: 'decimo' };
+  function sincronizarGradoConMateria_(){
+    const materia = document.getElementById('naMateria').value;
+    const selGrado = document.getElementById('naGrado');
+    selGrado.value = GRADO_POR_MATERIA[materia];
+    selGrado.disabled = true;
+    poblarCursosNuevaActividad_();
+  }
+  document.getElementById('naMateria').addEventListener('change', sincronizarGradoConMateria_);
+  sincronizarGradoConMateria_();
+
+  function poblarCursosNuevaActividad_(){
+    const sel = document.getElementById('naCurso');
+    const grado = document.getElementById('naGrado').value;
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">Todo el grado (todos los cursos)</option>' +
+      (CURSOS_POR_GRADO[grado]||[]).map(c=>`<option value="${c}">Solo ${c}</option>`).join('');
+    if([...sel.options].some(o=>o.value===actual)) sel.value = actual;
+  }
+
+  // Misma coherencia Materia -> Grado -> Curso, pero para el formulario de Editar.
+  function poblarCursosEditarActividad_(){
+    const sel = document.getElementById('editCursoActividad');
+    const materia = document.getElementById('editMateriaActividad').value;
+    const grado = GRADO_POR_MATERIA[materia];
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">Todo el grado (todos los cursos)</option>' +
+      (CURSOS_POR_GRADO[grado]||[]).map(c=>`<option value="${c}">Solo ${c}</option>`).join('');
+    if([...sel.options].some(o=>o.value===actual)) sel.value = actual;
+    else sel.value = ''; // si el curso ya no es válido para la materia nueva, vuelve a "Todo el grado"
+  }
+  document.getElementById('editMateriaActividad').addEventListener('change', poblarCursosEditarActividad_);
+
+  document.getElementById('naPlanMejora').addEventListener('change', ()=>{
+    const esPlanMejora = !!document.getElementById('naPlanMejora').value;
+    ['naCognitivo','naProcedimental','naAutoevaluacion','naCoevaluacion'].forEach(id=>{
+      const el = document.getElementById(id);
+      el.disabled = esPlanMejora;
+      if(esPlanMejora) el.checked = false;
+    });
+  });
+  ['naCognitivo','naProcedimental','naAutoevaluacion','naCoevaluacion'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', ()=>{
+      const algunaMarcada = ['naCognitivo','naProcedimental','naAutoevaluacion','naCoevaluacion'].some(x=>document.getElementById(x).checked);
+      if(algunaMarcada) document.getElementById('naPlanMejora').value = '';
+    });
+  });
+
+  document.getElementById('editPlanMejora').addEventListener('change', ()=>{
+    const esPlanMejora = !!document.getElementById('editPlanMejora').value;
+    ['editCognitivo','editProcedimental','editAutoevaluacion','editCoevaluacion'].forEach(id=>{
+      const el = document.getElementById(id);
+      el.disabled = esPlanMejora;
+      if(esPlanMejora) el.checked = false;
+    });
+  });
+  ['editCognitivo','editProcedimental','editAutoevaluacion','editCoevaluacion'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', ()=>{
+      const algunaMarcada = ['editCognitivo','editProcedimental','editAutoevaluacion','editCoevaluacion'].some(x=>document.getElementById(x).checked);
+      if(algunaMarcada) document.getElementById('editPlanMejora').value = '';
+    });
+  });
+
+  // ============ Lista de actividades ya creadas — editar / eliminar ============
+  async function cargarListaActividadesCreadas_(){
+    const tbody = document.querySelector('#tablaActividadesCreadas tbody');
+    const hint = document.getElementById('hintListaActividades');
+    tbody.innerHTML = '';
+    hint.textContent = 'Cargando…';
+    try{
+      const [snapCategorias, snapFechas] = await Promise.all([
+        db.collection('categoriasActividad').get(),
+        db.collection('fechasLimite').get()
+      ]);
+      const fechasPorActividad = {};
+      snapFechas.forEach(doc => { fechasPorActividad[doc.id] = doc.data().fecha; });
+
+      const filas = [];
+      snapCategorias.forEach(doc => filas.push({ nombre: doc.id, ...doc.data() }));
+      filas.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+
+      const filtroMateria = document.getElementById('filtroListaMateria').value;
+      const filtroCurso = document.getElementById('filtroListaCurso').value;
+      const filasFiltradas = filas.filter(f=>{
+        if(filtroMateria && f.materia !== filtroMateria) return false;
+        if(filtroCurso && f.curso && String(f.curso) !== filtroCurso) return false; // "Todo el grado" (curso vacío) siempre pasa
+        return true;
+      });
+
+      if(!filas.length){ hint.textContent = 'Todavía no hay actividades registradas.'; return; }
+      if(!filasFiltradas.length){ hint.textContent = 'Ninguna actividad coincide con ese filtro.'; return; }
+      hint.textContent = '';
+
+      const NOMBRE_MATERIA = { matematicas:'Matemáticas', fisica:'Física' };
+      filasFiltradas.forEach(f=>{
+        const tipo = f.planMejoraTipo
+          ? `Plan de Mejora — ${f.planMejoraTipo==='integral'?'Trimestre':'Subcomisión'} ${f.planMejoraTrimestre}`
+          : [f.esHeteroevaluacion?'Heteroevaluación':null, f.esActitudinal?'Actitudinal':null].filter(Boolean).join(' + ')
+            // Respaldo para actividades creadas con el esquema viejo (antes de admitir
+            // varias categorías a la vez, cuando "categoria" era un solo texto).
+            || (f.categoria === 'actitudinal' ? 'Actitudinal' : f.categoria === 'heteroevaluacion' ? 'Heteroevaluación' : 'Sin categoría');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${f.nombre}</td><td>${NOMBRE_MATERIA[f.materia] || '—'}</td><td>${f.trimestre ?? '—'}</td><td>${f.curso || 'Todo el grado'}</td><td>${tipo}</td><td>${fechasPorActividad[f.nombre] || '—'}</td><td></td>`;
+        const tdBotones = tr.lastElementChild;
+        const btnEditar = document.createElement('button');
+        btnEditar.className = 'btn mini secondary';
+        btnEditar.textContent = '✏️ Editar';
+        btnEditar.addEventListener('click', ()=>{
+          const card = document.getElementById('cardEditarActividad');
+          card.classList.remove('hidden');
+          document.getElementById('editandoNombreActividad').textContent = f.nombre;
+          document.getElementById('editNombreActividad').value = f.nombre;
+          document.getElementById('editFechaLimiteActividad').value = fechasPorActividad[f.nombre] || '';
+          document.getElementById('editMateriaActividad').value = f.materia || 'matematicas';
+          poblarCursosEditarActividad_(); // llena las opciones correctas según la materia, antes de asignar el valor
+          document.getElementById('editCursoActividad').value = f.curso || '';
+          // Precarga la categoría actual — con respaldo al esquema viejo (categoria como
+          // texto único), para que una actividad "Sin categoría" (de antes) también se
+          // pueda corregir aquí, no solo las creadas con el esquema nuevo.
+          document.getElementById('editPlanMejora').value = f.planMejoraTipo ? `${f.planMejoraTipo}-${f.planMejoraTrimestre}` : '';
+          const esHeteroViejo = !f.esHeteroevaluacion && !f.esActitudinal && f.categoria === 'heteroevaluacion';
+          const esActitudinalViejo = !f.esHeteroevaluacion && !f.esActitudinal && f.categoria === 'actitudinal';
+          document.getElementById('editCognitivo').checked = !!(f.subtipos?.cognitivo) || esHeteroViejo;
+          document.getElementById('editProcedimental').checked = !!(f.subtipos?.procedimental);
+          document.getElementById('editAutoevaluacion').checked = !!(f.subtipos?.autoevaluacion) || esActitudinalViejo;
+          document.getElementById('editCoevaluacion').checked = !!(f.subtipos?.coevaluacion);
+          // Si es Plan de Mejora, las casillas deben quedar deshabilitadas desde el inicio.
+          const esPlanMejora = !!f.planMejoraTipo;
+          ['editCognitivo','editProcedimental','editAutoevaluacion','editCoevaluacion'].forEach(id=>{
+            document.getElementById(id).disabled = esPlanMejora;
+          });
+          document.getElementById('btnGuardarEdicionActividad').dataset.nombreOriginal = f.nombre;
+          // Sin esto, el formulario abre fuera de la vista (más abajo en la página) y
+          // parece que el botón no hizo nada.
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        const btnEliminar = document.createElement('button');
+        btnEliminar.className = 'btn mini warn';
+        btnEliminar.textContent = '🗑️ Eliminar';
+        btnEliminar.addEventListener('click', async ()=>{
+          if(!confirm(`¿Eliminar el registro de "${f.nombre}"?\n\nEsto NO borra ninguna nota que los estudiantes ya tengan — solo quita su categorización y fecha límite. Si quieres que deje de contar en el Boletín, hazlo con cuidado.`)) return;
+          try{
+            await db.collection('categoriasActividad').doc(f.nombre).delete();
+            if(fechasPorActividad[f.nombre]) await db.collection('fechasLimite').doc(f.nombre).delete();
+            hint.textContent = `✅ "${f.nombre}" eliminada del registro.`;
+            cargarListaActividadesCreadas_();
+          }catch(err){
+            hint.textContent = 'Error al eliminar: ' + err.message;
+          }
+        });
+        tdBotones.appendChild(btnEditar);
+        tdBotones.appendChild(btnEliminar);
+        tbody.appendChild(tr);
+      });
+    }catch(err){
+      hint.textContent = 'Error al cargar: ' + err.message;
+    }
+  }
+  function poblarCursosFiltroLista_(){
+    const sel = document.getElementById('filtroListaCurso');
+    const materia = document.getElementById('filtroListaMateria').value;
+    const actual = sel.value;
+    const cursos = materia ? (CURSOS_POR_GRADO[GRADO_POR_MATERIA[materia]]||[]) : ['602','603','1001','1002','1003'];
+    sel.innerHTML = '<option value="">Todos los cursos</option>' + cursos.map(c=>`<option value="${c}">${c}</option>`).join('');
+    if([...sel.options].some(o=>o.value===actual)) sel.value = actual;
+    else sel.value = '';
+  }
+  document.getElementById('filtroListaMateria').addEventListener('change', ()=>{
+    poblarCursosFiltroLista_();
+    cargarListaActividadesCreadas_();
+  });
+  document.getElementById('filtroListaCurso').addEventListener('change', cargarListaActividadesCreadas_);
+  document.getElementById('btnRefrescarListaActividades').addEventListener('click', cargarListaActividadesCreadas_);
+
+  // ============ Diagnóstico: ¿por qué (no) aparece una actividad? ============
+  async function poblarSelectorDiagnostico_(){
+    const sel = document.getElementById('diagActividad');
+    try{
+      const snap = await db.collection('categoriasActividad').get();
+      const nombres = [];
+      snap.forEach(doc => nombres.push(doc.id));
+      nombres.sort();
+      sel.innerHTML = nombres.map(n=>`<option value="${n}">${n}</option>`).join('') || '<option value="">(sin actividades registradas)</option>';
+    }catch(err){
+      sel.innerHTML = '<option value="">Error al cargar</option>';
+    }
+  }
+  document.getElementById('btnRefrescarListaActividades').addEventListener('click', poblarSelectorDiagnostico_);
+  poblarSelectorDiagnostico_();
+
+  document.getElementById('btnDiagnosticar').addEventListener('click', async ()=>{
+    const nombreActividad = document.getElementById('diagActividad').value;
+    const ti = document.getElementById('diagTiEstudiante').value.trim();
+    const resultado = document.getElementById('resultadoDiagnostico');
+    if(!nombreActividad || !ti){ resultado.textContent = '⚠ Elige una actividad y escribe el TI del estudiante.'; return; }
+
+    resultado.textContent = 'Verificando…';
+    try{
+      const snapAct = await db.collection('categoriasActividad').doc(nombreActividad).get();
+      if(!snapAct.exists){ resultado.textContent = `❌ "${nombreActividad}" ya no existe en categoriasActividad.`; return; }
+      const info = snapAct.data();
+
+      const snapEst = await db.collection('boletines').doc(ti).get();
+      if(!snapEst.exists){ resultado.textContent = `❌ No existe ningún boletín con TI "${ti}". Revisa que el estudiante ya tenga cuenta creada.`; return; }
+      const est = snapEst.data();
+
+      const lineas = [];
+      lineas.push(`Estudiante: ${est.nombre || '(sin nombre)'} — Curso ${est.curso || '(sin curso)'}`);
+      lineas.push(`Actividad: ${nombreActividad}`);
+      lineas.push('');
+
+      // 1) Curso / grado
+      const GRADO_POR_MATERIA_DIAG = { matematicas: 'sexto', fisica: 'decimo' };
+      const CURSOS_POR_GRADO_DIAG = { sexto: ['602','603'], decimo: ['1001','1002','1003'] };
+      let pasaCurso;
+      if(info.curso){
+        pasaCurso = String(info.curso) === String(est.curso);
+        lineas.push(`${pasaCurso?'✅':'❌'} Curso: la actividad es solo para "${info.curso}", el estudiante es de "${est.curso}".`);
+      }else{
+        const gradoAct = GRADO_POR_MATERIA_DIAG[info.materia];
+        if(!gradoAct){
+          pasaCurso = true;
+          lineas.push(`⚠ Curso: la actividad es "todo el grado", pero no tiene Materia guardada — no se puede verificar el grado, se deja pasar. Corrígele la Materia desde "Editar".`);
+        }else{
+          pasaCurso = (CURSOS_POR_GRADO_DIAG[gradoAct]||[]).includes(String(est.curso));
+          lineas.push(`${pasaCurso?'✅':'❌'} Curso: la actividad es "todo el grado" de ${info.materia==='fisica'?'Física (Décimo)':'Matemáticas (Sexto)'}. El estudiante es de "${est.curso}", que ${pasaCurso?'sí':'NO'} pertenece a ese grado.`);
+        }
+      }
+
+      // 2) Categoría
+      const esPlanMejora = !!info.planMejoraTipo;
+      const tieneCategoria = esPlanMejora || info.esHeteroevaluacion || info.esActitudinal;
+      lineas.push(`${tieneCategoria?'✅':'❌'} Categoría: ${esPlanMejora ? `Plan de Mejora — ${info.planMejoraTipo==='integral'?'Trimestre':'Subcomisión'} ${info.planMejoraTrimestre}` : (info.esHeteroevaluacion||info.esActitudinal) ? [info.esHeteroevaluacion?'Heteroevaluación':null, info.esActitudinal?'Actitudinal':null].filter(Boolean).join(' + ') : 'SIN CATEGORÍA (esto la esconde por completo — corrígela en Editar)'}`);
+
+      // 3) Trimestre — solo aplica a las normales (heteroevaluación/actitudinal); el
+      // Plan de Mejora usa su propio trimestre, ya mostrado arriba, y siempre es visible
+      // en la pestaña "Plan de Mejora" sin importar el trimestre activo del sistema.
+      if(!esPlanMejora){
+        const snapSistema = await db.collection('config').doc('sistema').get();
+        const trimestreActivoReal = snapSistema.exists ? snapSistema.data().trimestreActivo : null;
+        const pasaTrimestre = Number(info.trimestre) === Number(trimestreActivoReal);
+        lineas.push(`${pasaTrimestre?'✅':'❌'} Trimestre: la actividad es de Trimestre ${info.trimestre}, el sistema está activo en Trimestre ${trimestreActivoReal}. Solo se ve en la pestaña de Trimestre ${info.trimestre} del Boletín (no en las demás).`);
+      }
+
+      // 4) Ya tiene nota (no se mostraría "pendiente" porque ya está en la tabla real)
+      if(!esPlanMejora){
+        const notasDeEseTrimestre = (est[`trimestre${info.trimestre}`]||{}).notas || [];
+        const yaTieneNota = notasDeEseTrimestre.some(n=>n.actividad === nombreActividad);
+        if(yaTieneNota) lineas.push(`ℹ️ Este estudiante YA tiene una nota registrada para esta actividad — no se muestra como "pendiente", se muestra con su nota real.`);
+      }
+
+      // 5) Link
+      lineas.push(`${info.link?'✅':'❌'} Link guardado: ${info.link || '(vacío — revísalo en Editar)'}`);
+
+      resultado.textContent = lineas.join('\n');
+    }catch(err){
+      resultado.textContent = 'Error al verificar: ' + err.message;
+    }
+  });
+
+
+  cargarListaActividadesCreadas_();
+
+  document.getElementById('btnCancelarEdicionActividad').addEventListener('click', ()=>{
+    document.getElementById('cardEditarActividad').classList.add('hidden');
+  });
+
+  document.getElementById('btnGuardarEdicionActividad').addEventListener('click', async ()=>{
+    const nombreOriginal = document.getElementById('btnGuardarEdicionActividad').dataset.nombreOriginal;
+    const nombreNuevo = document.getElementById('editNombreActividad').value.trim();
+    const fechaNueva = document.getElementById('editFechaLimiteActividad').value;
+    const hint = document.getElementById('hintEditarActividad');
+    if(!nombreNuevo){ hint.textContent = '⚠ El nombre no puede quedar vacío.'; return; }
+
+    hint.textContent = 'Guardando…';
+    try{
+      const cambioDeNombre = nombreNuevo !== nombreOriginal;
+
+      if(cambioDeNombre){
+        // Renombrar de verdad significa actualizar el nombre en TODOS los lugares donde
+        // ya vive — no solo el registro de la actividad — para no dejar notas de
+        // estudiantes "huérfanas" con el nombre viejo.
+        if(!confirm(`Vas a renombrar "${nombreOriginal}" a "${nombreNuevo}".\n\nEsto actualiza el nombre en TODOS los intentos de estudiantes y en las notas ya guardadas en los boletines — no se pierde ninguna nota, solo cambia la etiqueta. ¿Continuar?`)) {
+          hint.textContent = 'Cancelado.';
+          return;
+        }
+        // 1) Mover el registro de categoriasActividad al nuevo nombre (Firestore no permite
+        //    renombrar un ID de documento directamente — se crea el nuevo y se borra el viejo).
+        const snapCat = await db.collection('categoriasActividad').doc(nombreOriginal).get();
+        if(snapCat.exists){
+          await db.collection('categoriasActividad').doc(nombreNuevo).set({ ...snapCat.data(), nombre: nombreNuevo });
+          await db.collection('categoriasActividad').doc(nombreOriginal).delete();
+        }
+        // 2) Actualizar todos los intentos que tengan el nombre viejo.
+        const snapIntentos = await db.collection('intentos').where('actividad','==', nombreOriginal).get();
+        const batchIntentos = db.batch();
+        let cantidadIntentos = 0;
+        snapIntentos.forEach(doc => { batchIntentos.update(doc.ref, { actividad: nombreNuevo }); cantidadIntentos++; });
+        if(cantidadIntentos) await batchIntentos.commit();
+        // 3) Actualizar la nota ya guardada dentro de cada trimestreN.notas de cada
+        //    estudiante — recorriendo los 3 trimestres, por si la actividad aparece en más
+        //    de uno (poco común, pero no se debe dejar huérfana en ninguno).
+        const snapBoletines = await db.collection('boletines').get();
+        const batchBoletines = db.batch();
+        let cantidadBoletines = 0;
+        snapBoletines.forEach(doc => {
+          const bdata = doc.data();
+          const actualizacion = {};
+          [1,2,3].forEach(n=>{
+            const notasDelTrimestre = (bdata[`trimestre${n}`] || {}).notas;
+            if(!Array.isArray(notasDelTrimestre)) return;
+            let cambio = false;
+            const nuevasNotas = notasDelTrimestre.map(nt=>{
+              if(nt.actividad === nombreOriginal){ cambio = true; return { ...nt, actividad: nombreNuevo }; }
+              return nt;
+            });
+            if(cambio) actualizacion[`trimestre${n}.notas`] = nuevasNotas;
+          });
+          if(Object.keys(actualizacion).length){ batchBoletines.update(doc.ref, actualizacion); cantidadBoletines++; }
+        });
+        if(cantidadBoletines) await batchBoletines.commit();
+
+        hint.textContent = `✅ Renombrada. ${cantidadIntentos} intento(s) y ${cantidadBoletines} boletín(es) actualizados con el nuevo nombre.`;
+      }else{
+        hint.textContent = '✅ Guardado.';
+      }
+
+      // Fecha límite — con el nombre que corresponda ahora.
+      const nombreParaFecha = nombreNuevo;
+      if(fechaNueva){
+        await db.collection('fechasLimite').doc(nombreParaFecha).set({ actividad: nombreParaFecha, fecha: fechaNueva });
+      }else{
+        try{ await db.collection('fechasLimite').doc(nombreOriginal).delete(); }catch(e){ /* si no existía, no pasa nada */ }
+      }
+
+      // Curso (todo el grado, o uno específico) y categoría — se guardan siempre, haya
+      // cambiado el nombre o no.
+      const cursoNuevo = document.getElementById('editCursoActividad').value || null;
+      const materiaNueva = document.getElementById('editMateriaActividad').value;
+      const planMejoraValorEdit = document.getElementById('editPlanMejora').value;
+      const cognitivoEdit = document.getElementById('editCognitivo').checked;
+      const procedimentalEdit = document.getElementById('editProcedimental').checked;
+      const autoevaluacionEdit = document.getElementById('editAutoevaluacion').checked;
+      const coevaluacionEdit = document.getElementById('editCoevaluacion').checked;
+      if(!planMejoraValorEdit && !cognitivoEdit && !procedimentalEdit && !autoevaluacionEdit && !coevaluacionEdit){
+        hint.textContent = '⚠ Marca al menos una categoría (o elige un Plan de Mejora) antes de guardar.';
+        return;
+      }
+      let planMejoraTipoEdit = null, planMejoraTrimestreEdit = null;
+      if(planMejoraValorEdit){
+        const [tipo, num] = planMejoraValorEdit.split('-');
+        planMejoraTipoEdit = tipo; planMejoraTrimestreEdit = Number(num);
+      }
+      await db.collection('categoriasActividad').doc(nombreParaFecha).set({
+        curso: cursoNuevo, materia: materiaNueva,
+        esHeteroevaluacion: !planMejoraValorEdit && (cognitivoEdit || procedimentalEdit),
+        esActitudinal: !planMejoraValorEdit && (autoevaluacionEdit || coevaluacionEdit),
+        subtipos: { cognitivo: cognitivoEdit, procedimental: procedimentalEdit, autoevaluacion: autoevaluacionEdit, coevaluacion: coevaluacionEdit },
+        planMejoraTipo: planMejoraTipoEdit, planMejoraTrimestre: planMejoraTrimestreEdit,
+        // Se limpia el campo viejo — de aquí en adelante esta actividad ya vive
+        // completamente en el esquema nuevo, sin quedar mitad-mitad.
+        categoria: firebase.firestore.FieldValue.delete()
+      }, {merge:true});
+
+      cargarListaActividadesCreadas_();
+      setTimeout(()=>{ document.getElementById('cardEditarActividad').classList.add('hidden'); }, 1200);
+    }catch(err){
+      hint.textContent = 'Error: ' + err.message;
+    }
+  });
+
   document.getElementById('btnPrepararActividad').addEventListener('click', async ()=>{
     const materia = document.getElementById('naMateria').value; // 'matematicas' o 'fisica'
     const grado = document.getElementById('naGrado').value; // 'sexto' o 'decimo'
@@ -3179,16 +3944,25 @@
       return;
     }
 
+    const planMejoraValor = document.getElementById('naPlanMejora').value; // '', 'integral-1'..'3', 'subcomision-1'..'3'
     const cognitivo = document.getElementById('naCognitivo').checked;
     const procedimental = document.getElementById('naProcedimental').checked;
     const autoevaluacion = document.getElementById('naAutoevaluacion').checked;
     const coevaluacion = document.getElementById('naCoevaluacion').checked;
-    if(!cognitivo && !procedimental && !autoevaluacion && !coevaluacion){
-      alert('Marca al menos una categoría — puede ser una sola, varias, o todas.');
+    if(!planMejoraValor && !cognitivo && !procedimental && !autoevaluacion && !coevaluacion){
+      alert('Marca al menos una categoría (o elige un Plan de Mejora).');
       return;
     }
-    const esHeteroevaluacion = cognitivo || procedimental;
-    const esActitudinal = autoevaluacion || coevaluacion;
+    // Una actividad de Plan de Mejora NUNCA cuenta como heteroevaluación ni actitudinal —
+    // su nota se maneja aparte, como recuperación.
+    const esHeteroevaluacion = !planMejoraValor && (cognitivo || procedimental);
+    const esActitudinal = !planMejoraValor && (autoevaluacion || coevaluacion);
+    let planMejoraTipo = null, planMejoraTrimestre = null;
+    if(planMejoraValor){
+      const [tipo, num] = planMejoraValor.split('-');
+      planMejoraTipo = tipo; // 'integral' o 'subcomision'
+      planMejoraTrimestre = Number(num);
+    }
 
     // Misma convención de carpetas que ya usan tus talleres actuales:
     // {materia}/{grado}/trimestre_{n}/{CARPETA}/{archivo}.html
@@ -3198,13 +3972,44 @@
     const linkGithub = `https://el-profe-git.github.io/Colegio_2026/${ruta}`;
     const linkCloudflare = `https://elprofeleoteexplica.elp22587.workers.dev/${ruta}`;
 
+    // El nombre de la actividad es el identificador único en la base de datos — si ya
+    // existe una con ese mismo nombre pero para otra materia o ruta distinta, guardarla
+    // de nuevo la REEMPLAZA por completo (no crea una segunda). Esto pasó de verdad:
+    // "PMT2_evaluacion_1" se registró para Matemáticas y para Física con el mismo
+    // nombre, y la segunda borró los datos de la primera sin avisar.
+    try{
+      const snapExistente = await db.collection('categoriasActividad').doc(nombreActividad).get();
+      if(snapExistente.exists){
+        const existente = snapExistente.data();
+        const esRealmenteOtra = existente.materia && existente.materia !== materia
+          || (existente.link && existente.link !== linkCloudflare);
+        if(esRealmenteOtra){
+          const continuar = confirm(
+            `⚠ Ya existe una actividad registrada con el nombre "${nombreActividad}", pero es OTRA actividad distinta:\n\n` +
+            `Materia actual guardada: ${existente.materia || '(sin materia)'}\n` +
+            `Ruta actual guardada: ${existente.link || '(sin link)'}\n\n` +
+            `Materia nueva que vas a guardar: ${materia}\n` +
+            `Ruta nueva: ${linkCloudflare}\n\n` +
+            `Si continúas, la actividad anterior se PIERDE por completo — Firestore no puede tener dos con el mismo nombre. ` +
+            `Si son actividades distintas, cancela y usa un nombre único para cada una (ej. agregando "_MAT" o "_FIS" al final).\n\n¿Continuar y reemplazarla?`
+          );
+          if(!continuar){
+            document.getElementById('naConfirmacionFecha').textContent = 'Cancelado — cambia el nombre de la actividad para que no choque con la existente.';
+            return;
+          }
+        }
+      }
+    }catch(err){ /* si falla la verificación, se sigue igual, sin bloquear al docente */ }
+
     // Guarda TODAS las categorías marcadas — ahora sí admite combinaciones (una sola,
-    // varias, o las cuatro), no obliga a elegir un único tipo como antes.
+    // varias, o las cuatro), no obliga a elegir un único tipo como antes. Si es Plan de
+    // Mejora, se guarda el tipo (integral/subcomisión) y a qué trimestre corresponde.
     try{
       await db.collection('categoriasActividad').doc(nombreActividad).set({
-        nombre: nombreActividad, esHeteroevaluacion, esActitudinal,
+        nombre: nombreActividad, materia, esHeteroevaluacion, esActitudinal,
         subtipos: { cognitivo, procedimental, autoevaluacion, coevaluacion },
-        curso: null, trimestre: Number(trimestre),
+        planMejoraTipo, planMejoraTrimestre,
+        curso: document.getElementById('naCurso').value || null, trimestre: Number(trimestre),
         // El link se guarda aquí mismo — así el Boletín lo puede mostrar como hipervínculo
         // clicable de forma automática, sin que tengas que editar ningún archivo aparte.
         link: linkCloudflare, linkGithub: linkGithub
@@ -3238,6 +4043,7 @@
     const linkCf = document.getElementById('naLinkCloudflare');
     linkCf.textContent = linkCloudflare; linkCf.href = linkCloudflare;
     document.getElementById('resultadoNuevaActividad').classList.remove('hidden');
+    cargarListaActividadesCreadas_();
   });
 
   document.getElementById('btnCopiarLinea').addEventListener('click', ()=>{
@@ -3367,9 +4173,20 @@
           fila += `<td style="text-align:center; ${discrepancias?'color:var(--bad); font-weight:700;':''}">${discrepancias}</td>`;
         }
         if(mostrarDefinitiva){
-          const t1 = est.trimestre1?.nota, t2 = est.trimestre2?.nota, t3 = est.trimestre3?.nota;
-          const celda = (v) => typeof v === 'number' ? v.toFixed(1) : '<span style="color:var(--slate);">—</span>';
-          fila += `<td style="text-align:center;">${celda(t1)}</td><td style="text-align:center;">${celda(t2)}</td><td style="text-align:center;">${celda(t3)}</td>`;
+          // Nota efectiva: usa la recuperación de Plan de Mejora SOLO si la original
+          // quedó por debajo de 3.4 — igual que en el Boletín del estudiante.
+          const efectivaDe = (t) => {
+            if(!t || typeof t.notaDefinitiva !== 'number') return null;
+            if(t.notaDefinitiva < 3.4 && typeof t.notaRecuperacion === 'number') return t.notaRecuperacion;
+            return t.notaDefinitiva;
+          };
+          const t1 = efectivaDe(est.trimestre1), t2 = efectivaDe(est.trimestre2), t3 = efectivaDe(est.trimestre3);
+          const celda = (v, tOriginal) => {
+            if(typeof v !== 'number') return '<span style="color:var(--slate);">—</span>';
+            const huboRecuperacion = tOriginal && tOriginal.notaDefinitiva < 3.4 && typeof tOriginal.notaRecuperacion === 'number';
+            return huboRecuperacion ? `${v.toFixed(1)} <span style="font-size:0.7rem; color:var(--slate);">(rec.)</span>` : v.toFixed(1);
+          };
+          fila += `<td style="text-align:center;">${celda(t1, est.trimestre1)}</td><td style="text-align:center;">${celda(t2, est.trimestre2)}</td><td style="text-align:center;">${celda(t3, est.trimestre3)}</td>`;
           const notasCerradas = [t1,t2,t3].filter(n=>typeof n==='number');
           if(notasCerradas.length === 3){
             const promedio = (t1+t2+t3)/3;

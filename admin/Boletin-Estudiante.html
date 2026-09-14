@@ -135,6 +135,7 @@
         <button class="btn-menu" id="tabT2" data-tab="2">Trimestre 2</button>
         <button class="btn-menu" id="tabT3" data-tab="3">Trimestre 3</button>
         <button class="btn-menu" id="tabDefinitiva" data-tab="definitiva">📊 Definitiva del año</button>
+        <button class="btn-menu" id="tabPlanMejora" data-tab="planmejora">📋 Plan de Mejora</button>
       </div>
       <!-- ============================================================
            BLOQUE VISUAL POR TRIMESTRE — separado a propósito de la lógica
@@ -146,6 +147,7 @@
       <div id="bloqueTrimestre2" class="bloque-trimestre tab-contenido hidden"></div>
       <div id="bloqueTrimestre3" class="bloque-trimestre tab-contenido hidden"></div>
       <div id="bloqueDefinitiva" class="tab-contenido hidden"></div>
+      <div id="bloquePlanMejora" class="tab-contenido hidden"></div>
     </div>
 
     <div class="card hidden" id="cardCalculoT3">
@@ -153,7 +155,7 @@
       <div id="textoCalculoT3" style="font-size:0.9rem;"></div>
     </div>
 
-    <div class="card">
+    <div class="card card-por-trimestre">
       <h2 id="tituloHeteroevaluacion">Heteroevaluación — Trimestre 2 (70%)</h2>
       <div class="tabla-scroll">
       <table id="tablaNotas">
@@ -164,7 +166,7 @@
       <div style="text-align:right; font-weight:700; font-size:0.9rem; margin-top:6px;">Promedio: <span id="promHetero">—</span> · Acumulado del 70%: <span id="acumulado70">—</span></div>
     </div>
 
-    <div class="card">
+    <div class="card card-por-trimestre">
       <h2>Actitudinal (30%)</h2>
       <table>
         <tr><td>Autoevaluación (20%)</td><td id="autoevalTxt" style="text-align:right;">—</td></tr>
@@ -173,7 +175,7 @@
       <div id="linkAutoevaluacion" class="hidden" style="margin-top:8px; font-size:0.85rem;"></div>
     </div>
 
-    <div class="card">
+    <div class="card card-por-trimestre">
       <h2 style="text-align:center;">Nota Definitiva</h2>
       <table style="font-size:0.85rem; margin-bottom:8px;">
         <tr><td>Heteroevaluación (70%)</td><td style="text-align:right;" id="desgloseHetero">—</td></tr>
@@ -185,6 +187,7 @@
         ⚠ Este número todavía NO es tu nota final. Te falta responder tu autoevaluación y/o coevaluación (20%+10%) — mientras tanto, aquí solo se refleja el 70% de heteroevaluación.
       </div>
       <div class="nota-grande" id="notaDefinitivaTxt">—</div>
+      <div id="notaRecuperacionTxt" class="hidden" style="text-align:center; font-size:0.85rem; margin-top:6px;"></div>
       <div id="avisoDefinitivaPendiente" class="hidden" style="background:#FCE4E4; border:1.5px solid var(--bad); border-radius:8px; padding:10px; margin-top:10px; font-size:0.85rem; color:var(--bad); text-align:center;">
         ⚠ Tu nota definitiva está <b>pendiente</b> porque te faltan notas por completar. Tienes plazo hasta el <b>18 de agosto</b> para completarlas.
       </div>
@@ -204,12 +207,12 @@
       <div id="textoAutorreporteGuardado" class="hidden" style="font-size:0.82rem; color:var(--accent-dark); margin-top:8px; font-weight:700;"></div>
     </div>
 
-    <div class="card">
+    <div class="card card-por-trimestre">
       <h2 style="font-size:0.95rem;">📈 Resumen del proceso formativo</h2>
       <div id="resumenProcesoTxt" style="font-size:0.85rem;"></div>
     </div>
 
-    <div class="card">
+    <div class="card card-por-trimestre">
       <h2 style="font-size:0.95rem;">✔️ Constancia de conformidad</h2>
       <p style="font-size:0.85rem; color:var(--slate); margin-top:0;">
         Este paso es opcional — no afecta tus notas ni tu proceso de ninguna forma. Solo deja
@@ -219,7 +222,7 @@
       <div id="textoConstanciaGuardada" class="hidden" style="font-size:0.82rem; color:var(--accent-dark); margin-top:8px; font-weight:700;"></div>
     </div>
 
-    <div class="card">
+    <div class="card card-por-trimestre">
       <h2 id="tituloAsistencia">📅 Asistencia — Trimestre 2</h2>
       <table>
         <tr><td>Clases programadas</td><td id="clasesProgTxt" style="text-align:right;">—</td></tr>
@@ -228,7 +231,7 @@
       </table>
     </div>
 
-    <div class="card">
+    <div class="card card-por-trimestre">
       <h2 id="tituloDetalleTalleres">🔧 Detalle de intentos por actividad — Trimestre 2</h2>
       <div id="talleresTxt"></div>
     </div>
@@ -385,6 +388,22 @@
     return v ? String(v) : '—';
   }
 
+  // Misma correspondencia Materia -> Grado -> Cursos que ya existe en el Panel — sin
+  // esto, una actividad "para todo el grado" (curso vacío) se mostraba para CUALQUIER
+  // curso de CUALQUIER grado, no solo los del grado real de su materia (ej. un taller
+  // de Matemáticas-Sexto apareciéndole a un estudiante de Décimo).
+  const CURSOS_POR_GRADO_BOL = { sexto: ['602','603'], decimo: ['1001','1002','1003'] };
+  const GRADO_POR_MATERIA_BOL = { matematicas: 'sexto', fisica: 'decimo' };
+  function actividadAplicaAlEstudiante_(info, cursoEstudiante){
+    if(info.curso) return String(info.curso) === String(cursoEstudiante);
+    // Sin curso específico ("todo el grado") — se revisa que el curso del estudiante
+    // pertenezca al grado real de la materia de esta actividad. Si la actividad es vieja
+    // y no tiene materia guardada, se deja pasar (no hay con qué filtrarla).
+    const gradoDeLaActividad = GRADO_POR_MATERIA_BOL[info.materia];
+    if(!gradoDeLaActividad) return true;
+    return (CURSOS_POR_GRADO_BOL[gradoDeLaActividad]||[]).includes(String(cursoEstudiante));
+  }
+
   async function mostrarBoletin(b){
     document.getElementById('nombreTxt').textContent = b.nombre || '';
     document.getElementById('datosTxt').textContent = `TI ${b.ti} · Curso ${b.curso}`;
@@ -400,12 +419,16 @@
 
     // Links de actividades — se leen de Firestore (lo que se crea desde "Preparar
     // Actividad Nueva" en el Panel), combinados con la lista fija vieja como respaldo
-    // por si alguna actividad antigua todavía solo vive ahí.
+    // por si alguna actividad antigua todavía solo vive ahí. También se guarda la data
+    // completa (curso/trimestre/categoría) para poder mostrar actividades "pendientes"
+    // aunque el estudiante todavía no las haya presentado ni tengan nota.
+    let categoriasActividadTodas = {};
     try{
       const snapCategorias = await db.collection('categoriasActividad').get();
       const linksDesdeFirestore = {};
       snapCategorias.forEach(doc => {
         const d = doc.data();
+        categoriasActividadTodas[doc.id] = d;
         if(d.link) linksDesdeFirestore[doc.id] = d.link;
       });
       window.LINKS_ACTIVIDADES = { ...(window.LINKS_ACTIVIDADES||{}), ...linksDesdeFirestore };
@@ -442,13 +465,16 @@
       }catch(err){ /* si falla, simplemente no se muestran los banners, sin romper el resto del boletín */ }
     })();
 
-    // Competencia a lograr del trimestre activo (el primero que aún no está congelado).
-    // Viene de la hoja COMPETENCIAS del Excel, un solo texto por grado.
-    const numeroTrimestreActivo = [1,2,3].find(n => !b[`trimestre${n}`]) || 3;
+    // Competencia a lograr del trimestre activo — usa el MISMO trimestre activo global
+    // que todo lo demás (no se adivina por separado), y se lee anidada en su propio
+    // trimestreN (donde vive desde que Excel la sube), no de un campo suelto.
+    // Se lee SOLO del propio trimestre activo — sin respaldo a ningún campo suelto viejo,
+    // que podía traer contenido de un trimestre distinto pegado con la etiqueta correcta.
+    const competenciaDelTrimestre = (b[`trimestre${numeroTrimestreActivoGlobal}`] || {}).competenciaALograr;
     const competenciaTxt = document.getElementById('competenciaTxt');
-    if(b.competenciaALograr){
+    if(competenciaDelTrimestre){
       competenciaTxt.classList.remove('hidden');
-      competenciaTxt.innerHTML = `<b>Competencia a lograr — Trimestre ${numeroTrimestreActivo}:</b> ${b.competenciaALograr}`;
+      competenciaTxt.innerHTML = `<b>Competencia a lograr — Trimestre ${numeroTrimestreActivoGlobal}:</b> ${competenciaDelTrimestre}`;
     }else{
       competenciaTxt.classList.add('hidden');
     }
@@ -467,6 +493,98 @@
       if(txt==='NO') return '<span class="badge" style="background:#FCE4E4;color:var(--bad);">No</span>';
       return '<span class="badge" style="background:#EEEEEA;color:var(--slate);">—</span>';
     }
+
+    // Subcomisión y Plan de Mejora Integral — son propios de CADA trimestre desde que se
+    // crean (no dependen de si el trimestre ya está congelado o no). Vive a este nivel
+    // (no anidada dentro de renderBloqueTrimestre_) para que TANTO la vista por trimestre
+    // COMO la nueva pestaña consolidada "Plan de Mejora" puedan usar la misma lógica.
+    function renderBloqueSeisCampos_(titulo, datos, tipoPlanMejora, numeroTrimestreDeEste){
+      // Busca TODAS las actividades de Plan de Mejora registradas para este trimestre y
+      // tipo (integral o subcomisión) — antes solo se tomaba la primera con find(), y si
+      // había varias (ej. 3 actividades de recuperación distintas), las otras 2 se
+      // perdían sin que el estudiante las viera nunca.
+      const actividadesPendientes = Object.entries(categoriasActividadTodas).filter(([nombreAct, info]) =>
+        info.planMejoraTipo === tipoPlanMejora && Number(info.planMejoraTrimestre) === Number(numeroTrimestreDeEste)
+        && actividadAplicaAlEstudiante_(info, b.curso)
+      );
+
+      function listaActividadesHtml_(){
+        return actividadesPendientes.map(([nombreAct, info])=>{
+          const linkAct = info.link;
+          return `<div style="background:#FDECD9; border:1.5px solid var(--naranja-leo); border-radius:8px; padding:8px 10px; margin:6px 0; font-size:0.82rem; text-align:center;">
+            📋 ${linkAct ? `<a href="${linkAct}" target="_blank"><b>${nombreAct}</b></a>` : `<b>${nombreAct}</b>`}
+          </div>`;
+        }).join('');
+      }
+
+      if(!datos){
+        // Aunque no haya registro de reportado/subcomisión todavía, si existen
+        // actividades de Plan de Mejora para este trimestre, se muestran igual — el
+        // estudiante necesita verlas, no deben perderse solo porque falta el registro.
+        if(!actividadesPendientes.length) return '';
+        return `
+          <div style="font-size:0.82rem; margin-top:10px; padding-top:8px; border-top:1px dashed #E3E1D8;">
+            <div style="font-weight:700; margin-bottom:4px;">${titulo}</div>
+            <div style="font-size:0.8rem; margin-bottom:4px;">Actividad(es) de recuperación disponible(s):</div>
+            ${listaActividadesHtml_()}
+          </div>`;
+      }
+      const fueReportado = String(datos.reportado||'').trim() === 'Sí';
+      const tieneRecuperacionSubcomision = typeof datos.notaRecuperacion === 'number';
+      // Si hubo recuperación, el banner y el resultado reflejan que ya se puso al día —
+      // la nota original de proceso NUNCA se borra, solo se aclara al lado.
+      const yaSePusoAlDia = fueReportado && tieneRecuperacionSubcomision;
+      const bannerGrafico = (fueReportado && !yaSePusoAlDia)
+        ? `<div style="background:#FBE9E5; border:2px solid var(--bad); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:0.85rem; color:var(--bad); font-weight:700; text-align:center;">
+             ⚠ Estás en Plan de Mejora — habla con tu docente y no dejes pasar las fechas de entrega.
+           </div>`
+        : yaSePusoAlDia
+        ? `<div style="background:#EAF3DD; border:2px solid var(--verde-leo); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:0.85rem; color:var(--verde-leo-oscuro); font-weight:700; text-align:center;">
+             ✅ Ya presentaste tu recuperación de este corte.
+           </div>`
+        : `<div style="background:#EAF3DD; border:2px solid var(--verde-leo); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:0.85rem; color:var(--verde-leo-oscuro); font-weight:700; text-align:center;">
+             🎉 ¡Vas bien! No estás reportado en Plan de Mejora en este corte.
+           </div>`;
+      // Si está reportado y todavía no tiene recuperación, se muestran TODAS las
+      // actividades registradas, no solo la primera.
+      const cajaActividadPendiente = (fueReportado && !tieneRecuperacionSubcomision && actividadesPendientes.length)
+        ? `<div style="font-size:0.8rem; margin:4px 0;">Presenta cualquiera de estas para recuperar:</div>${listaActividadesHtml_()}`
+        : '';
+      const filaRecuperacion = tieneRecuperacionSubcomision
+        ? `<div style="display:flex; justify-content:space-between;"><span>Nota de recuperación</span><b style="color:var(--verde-leo-oscuro);">${datos.notaRecuperacion.toFixed(1)}</b></div>`
+        : '';
+      return `
+        <div style="font-size:0.82rem; margin-top:10px; padding-top:8px; border-top:1px dashed #E3E1D8;">
+          <div style="font-weight:700; margin-bottom:4px;">${titulo}</div>
+          ${bannerGrafico}
+          ${cajaActividadPendiente}
+          <div style="display:flex; justify-content:space-between;"><span>Reportado</span>${badgeSiNo_(datos.reportado)}</div>
+          <div style="display:flex; justify-content:space-between;"><span>Informado</span>${badgeSiNo_(datos.informado)}</div>
+          <div style="display:flex; justify-content:space-between;"><span>Presentó evaluación</span>${badgeSiNo_(datos.presentoEvaluacion)}</div>
+          <div style="display:flex; justify-content:space-between;"><span>Presentó actividades</span>${badgeSiNo_(datos.presentoActividades)}</div>
+          ${typeof datos.notaProceso === 'number' ? `<div style="display:flex; justify-content:space-between;"><span>Nota del proceso</span><b>${datos.notaProceso.toFixed(1)}</b></div>` : ''}
+          ${filaRecuperacion}
+          ${datos.resultado ? `<div style="display:flex; justify-content:space-between;"><span>Resultado</span><b style="color:${datos.resultado==='Aprobado'?'var(--accent-dark)':'var(--bad)'};">${datos.resultado}</b></div>` : ''}
+        </div>`;
+    }
+
+    // Vista consolidada — TODOS los planes de mejora (Subcomisión 1/2/3, Integral 1/2/3)
+    // en un solo lugar, para que el estudiante no tenga que revisar trimestre por
+    // trimestre para saber si tiene algo pendiente.
+    function renderPlanMejoraConsolidado_(){
+      const cont = document.getElementById('bloquePlanMejora');
+      const bloques = [];
+      for(const n of [1,2,3]){
+        const htmlIntegral = renderBloqueSeisCampos_(`Plan de Mejora Integral — Trimestre ${n}`, b[`planMejoraIntegral${n}`], 'integral', n);
+        const htmlSubcomision = renderBloqueSeisCampos_(`Subcomisión ${n}`, b[`subcomision${n}`], 'subcomision', n);
+        if(htmlIntegral) bloques.push(htmlIntegral);
+        if(htmlSubcomision) bloques.push(htmlSubcomision);
+      }
+      cont.innerHTML = bloques.length
+        ? `<div class="card">${bloques.join('')}</div>`
+        : `<div class="card" style="background:var(--paper);"><p style="font-size:0.9rem; text-align:center; color:var(--slate);">No tienes ningún Plan de Mejora registrado por ahora. 🎉</p></div>`;
+    }
+
     function renderBloqueTrimestre_(numero, datosTrimestre, esElActivo){
       const cont = document.getElementById(`bloqueTrimestre${numero}`);
       const nombrePlan = NOMBRE_PLAN_POR_TRIMESTRE[numero];
@@ -497,33 +615,8 @@
           </div>`;
       }
 
-      // Subcomisión y Plan de Mejora Integral — son propios de CADA trimestre desde que se
-      // crean (no dependen de si el trimestre ya está congelado o no, a diferencia del plan
-      // de mejora de arriba), por eso se leen directo con el número de este bloque.
-      function renderBloqueSeisCampos_(titulo, datos){
-        if(!datos) return '';
-        const fueReportado = String(datos.reportado||'').trim() === 'Sí';
-        const bannerGrafico = fueReportado
-          ? `<div style="background:#FBE9E5; border:2px solid var(--bad); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:0.85rem; color:var(--bad); font-weight:700; text-align:center;">
-               ⚠ Estás en Plan de Mejora — habla con tu docente y no dejes pasar las fechas de entrega.
-             </div>`
-          : `<div style="background:#EAF3DD; border:2px solid var(--verde-leo); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:0.85rem; color:var(--verde-leo-oscuro); font-weight:700; text-align:center;">
-               🎉 ¡Vas bien! No estás reportado en Plan de Mejora en este corte.
-             </div>`;
-        return `
-          <div style="font-size:0.82rem; margin-top:10px; padding-top:8px; border-top:1px dashed #E3E1D8;">
-            <div style="font-weight:700; margin-bottom:4px;">${titulo}</div>
-            ${bannerGrafico}
-            <div style="display:flex; justify-content:space-between;"><span>Reportado</span>${badgeSiNo_(datos.reportado)}</div>
-            <div style="display:flex; justify-content:space-between;"><span>Informado</span>${badgeSiNo_(datos.informado)}</div>
-            <div style="display:flex; justify-content:space-between;"><span>Presentó evaluación</span>${badgeSiNo_(datos.presentoEvaluacion)}</div>
-            <div style="display:flex; justify-content:space-between;"><span>Presentó actividades</span>${badgeSiNo_(datos.presentoActividades)}</div>
-            ${typeof datos.notaProceso === 'number' ? `<div style="display:flex; justify-content:space-between;"><span>Nota del proceso</span><b>${datos.notaProceso.toFixed(1)}</b></div>` : ''}
-            ${datos.resultado ? `<div style="display:flex; justify-content:space-between;"><span>Resultado</span><b style="color:${datos.resultado==='Aprobado'?'var(--accent-dark)':'var(--bad)'};">${datos.resultado}</b></div>` : ''}
-          </div>`;
-      }
-      const subcomisionHtml = renderBloqueSeisCampos_(`Subcomisión ${numero}`, b[`subcomision${numero}`]);
-      const integralHtml = renderBloqueSeisCampos_(`Plan de Mejora Integral — Trimestre ${numero}`, b[`planMejoraIntegral${numero}`]);
+      const subcomisionHtml = renderBloqueSeisCampos_(`Subcomisión ${numero}`, b[`subcomision${numero}`], 'subcomision', numero);
+      const integralHtml = renderBloqueSeisCampos_(`Plan de Mejora Integral — Trimestre ${numero}`, b[`planMejoraIntegral${numero}`], 'integral', numero);
 
       // Espacio reservado para personalización visual por trimestre (a futuro, desde el Panel):
       const fraseHtml = datosTrimestre && datosTrimestre.frase ? `<div class="frase-docente">${datosTrimestre.frase}</div>` : '';
@@ -558,21 +651,33 @@
     // ============ Definitiva del año — promedio de los 3 trimestres ============
     (function renderDefinitivaAnual_(){
       const cont = document.getElementById('bloqueDefinitiva');
-      const notasCerradas = [1,2,3].map(n => b[`trimestre${n}`]).filter(t => t && typeof t.notaDefinitiva === 'number');
-      if(notasCerradas.length < 3){
-        const faltan = 3 - notasCerradas.length;
+      // Nota efectiva por trimestre: usa la recuperación de Plan de Mejora SOLO si la
+      // original quedó por debajo de 3.4 — la definitiva del año nunca usa una nota
+      // reprobada si ya existe una recuperación válida para ese trimestre.
+      function efectivaDe(t){
+        if(!t || typeof t.notaDefinitiva !== 'number') return null;
+        if(t.notaDefinitiva < 3.4 && typeof t.notaRecuperacion === 'number') return t.notaRecuperacion;
+        return t.notaDefinitiva;
+      }
+      const trimestresConNota = [1,2,3].map(n => ({n, t: b[`trimestre${n}`], efectiva: efectivaDe(b[`trimestre${n}`])})).filter(x => x.efectiva !== null);
+      if(trimestresConNota.length < 3){
+        const faltan = 3 - trimestresConNota.length;
         cont.innerHTML = `<div class="card" style="background:var(--paper);">
           <p style="font-size:0.9rem;">Todavía faltan <b>${faltan}</b> trimestre(s) por cerrar para calcular tu definitiva del año.
           Se van sumando automáticamente a medida que tu docente congele cada trimestre.</p>
-          ${notasCerradas.map((t,i)=>`<div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Trimestre ${i+1}</span><b>${t.notaDefinitiva.toFixed(1)}</b></div>`).join('')}
+          ${trimestresConNota.map(x=>`<div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Trimestre ${x.n}</span><b>${x.efectiva.toFixed(1)}</b></div>`).join('')}
         </div>`;
         return;
       }
-      const promedio = notasCerradas.reduce((s,t)=>s+t.notaDefinitiva,0) / 3;
+      const promedio = trimestresConNota.reduce((s,x)=>s+x.efectiva,0) / 3;
       const aprobo = promedio >= 3.4;
       const claseColor = aprobo ? 'nota-aprobada' : 'nota-en-riesgo';
       cont.innerHTML = `<div class="card">
-        ${[1,2,3].map(n => `<div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Trimestre ${n}</span><b>${b[`trimestre${n}`].notaDefinitiva.toFixed(1)}</b></div>`).join('')}
+        ${trimestresConNota.map(x => {
+          const huboRecuperacion = x.t.notaDefinitiva < 3.4 && typeof x.t.notaRecuperacion === 'number';
+          const detalle = huboRecuperacion ? ` <span style="font-size:0.75rem; color:var(--slate);">(${x.t.notaDefinitiva.toFixed(1)} → recuperada)</span>` : '';
+          return `<div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Trimestre ${x.n}${detalle}</span><b>${x.efectiva.toFixed(1)}</b></div>`;
+        }).join('')}
         <div style="border-top:1.5px dashed #E3E1D8; margin-top:8px; padding-top:8px; display:flex; justify-content:space-between; align-items:center;">
           <span style="font-weight:700;">Promedio anual</span>
           <span class="${claseColor}" style="font-size:1.4rem; font-weight:800;">${promedio.toFixed(2)}</span>
@@ -584,21 +689,26 @@
     })();
 
     // ============ Pestañas del Boletín por Trimestre ============
-    document.querySelectorAll('#tabT1, #tabT2, #tabT3, #tabDefinitiva').forEach(boton=>{
+    document.querySelectorAll('#tabT1, #tabT2, #tabT3, #tabDefinitiva, #tabPlanMejora').forEach(boton=>{
       boton.onclick = ()=>{
-        document.querySelectorAll('#tabT1, #tabT2, #tabT3, #tabDefinitiva').forEach(b=>b.classList.remove('activo'));
+        document.querySelectorAll('#tabT1, #tabT2, #tabT3, #tabDefinitiva, #tabPlanMejora').forEach(b=>b.classList.remove('activo'));
         boton.classList.add('activo');
         document.getElementById('bloqueTrimestre1').classList.add('hidden');
         document.getElementById('bloqueTrimestre2').classList.add('hidden');
         document.getElementById('bloqueTrimestre3').classList.add('hidden');
         document.getElementById('bloqueDefinitiva').classList.add('hidden');
+        document.getElementById('bloquePlanMejora').classList.add('hidden');
         const tab = boton.dataset.tab;
-        const idMostrar = tab === 'definitiva' ? 'bloqueDefinitiva' : `bloqueTrimestre${tab}`;
+        const idMostrar = tab === 'definitiva' ? 'bloqueDefinitiva' : tab === 'planmejora' ? 'bloquePlanMejora' : `bloqueTrimestre${tab}`;
         document.getElementById(idMostrar).classList.remove('hidden');
-        // Las tarjetas de abajo (Heteroevaluación, Actitudinal, Asistencia, etc.) también
-        // cambian para reflejar el mismo trimestre — excepto en "Definitiva", donde no
-        // corresponde a un solo trimestre y se deja lo del trimestre activo tal cual está.
-        if(tab !== 'definitiva'){
+        // Las tarjetas de abajo (Heteroevaluación, Actitudinal, Asistencia, etc.) no
+        // aplican a "Definitiva del año" ni a "Plan de Mejora" — no corresponden a un
+        // solo trimestre, así que se ocultan en vez de dejar pegado el último visto.
+        const esVistaGeneral = (tab === 'definitiva' || tab === 'planmejora');
+        document.querySelectorAll('.card-por-trimestre').forEach(c => c.classList.toggle('hidden', esVistaGeneral));
+        if(tab === 'planmejora'){
+          renderPlanMejoraConsolidado_();
+        }else if(tab !== 'definitiva'){
           renderContenidoDelTrimestre_(Number(tab));
         }
       };
@@ -722,6 +832,13 @@
       const fuente = b[`trimestre${numero}`] || {};
       const esCerrado = !!fuente.congelado; // true solo si el docente ya lo Congeló
       const notaDefinitivaFuente = fuente.notaDefinitiva;
+      // Nota efectiva: la que realmente cuenta para "aprobado/no aprobado" y para la
+      // definitiva del año — usa la recuperación de Plan de Mejora SOLO si la nota
+      // original quedó por debajo de 3.4. La nota original NUNCA se borra ni se pisa,
+      // ambas se muestran siempre por separado.
+      const tieneRecuperacion = typeof fuente.notaRecuperacion === 'number';
+      const notaEfectiva = (typeof notaDefinitivaFuente === 'number' && notaDefinitivaFuente < 3.4 && tieneRecuperacion)
+        ? fuente.notaRecuperacion : notaDefinitivaFuente;
 
       document.getElementById('tituloHeteroevaluacion').textContent = `Heteroevaluación — Trimestre ${numero} (70%)`;
       document.getElementById('tituloAsistencia').textContent = `📅 Asistencia — Trimestre ${numero}`;
@@ -754,6 +871,22 @@
         tr.innerHTML = `<td>${nombreActividadHtml}</td><td style="text-align:right;">${celdaAciertos}</td><td style="text-align:right;">${celdaTiempo}</td><td style="text-align:right; font-weight:700;">${celdaNota}</td><td style="text-align:right;">${celdaAporte}</td>`;
         tablaBody.appendChild(tr);
       });
+
+      // Actividades registradas para ESTE curso y trimestre (creadas desde "Preparar
+      // Actividad Nueva") que el estudiante TODAVÍA no ha presentado — se muestran como
+      // pendientes, en vez de esperar a que exista una nota para que aparezcan.
+      const nombresYaEnTabla = new Set((fuente.notas||[]).map(n=>n.actividad));
+      Object.entries(categoriasActividadTodas).forEach(([nombreAct, info])=>{
+        if(!info.esHeteroevaluacion) return;
+        if(Number(info.trimestre) !== Number(numero)) return;
+        if(!actividadAplicaAlEstudiante_(info, b.curso)) return;
+        if(nombresYaEnTabla.has(nombreAct)) return; // ya se mostró arriba, con su nota real
+        const tr = document.createElement('tr');
+        const linkPendiente = info.link;
+        const nombreHtml = linkPendiente ? `<a href="${linkPendiente}" target="_blank">${nombreAct}</a>` : nombreAct;
+        tr.innerHTML = `<td>${nombreHtml}</td><td style="text-align:right;">—</td><td style="text-align:right;">—</td><td style="text-align:right; font-weight:700;">${esCerrado ? '<span style="color:var(--slate);">No presentada</span>' : '<span class="aviso-pendiente">Pendiente por presentar</span>'}</td><td style="text-align:right;">—</td>`;
+        tablaBody.appendChild(tr);
+      });
       document.getElementById('promHetero').textContent = cuenta ? (suma/cuenta).toFixed(2) : '—';
       document.getElementById('acumulado70').textContent = cuenta ? ((suma/cuenta)*0.70).toFixed(2) : '—';
 
@@ -778,11 +911,11 @@
       document.getElementById('desgloseAuto').textContent = notaEsRazonable(fuente.autoevaluacion) ? (fuente.autoevaluacion*0.2).toFixed(2) : '—';
       document.getElementById('desgloseCo').textContent = notaEsRazonable(fuente.coevaluacion) ? (fuente.coevaluacion*0.1).toFixed(2) : '—';
 
-      if(notaEsRazonable(notaDefinitivaFuente)){
-        document.getElementById('notaDefinitivaTxt').textContent = notaDefinitivaFuente.toFixed(2);
+      if(notaEsRazonable(notaEfectiva)){
+        document.getElementById('notaDefinitivaTxt').textContent = notaEfectiva.toFixed(2);
         document.getElementById('desgloseTotal').textContent = notaDefinitivaFuente.toFixed(2);
         document.getElementById('avisoNotaExtrana').classList.add('hidden');
-      }else if(typeof notaDefinitivaFuente === 'number'){
+      }else if(typeof notaEfectiva === 'number'){
         document.getElementById('notaDefinitivaTxt').textContent = '⚠';
         document.getElementById('desgloseTotal').textContent = '—';
         document.getElementById('avisoNotaExtrana').classList.remove('hidden');
@@ -791,10 +924,19 @@
         document.getElementById('desgloseTotal').textContent = '—';
         document.getElementById('avisoNotaExtrana').classList.add('hidden');
       }
+      // Si hubo Plan de Mejora, se deja constancia de AMBAS notas — la original nunca
+      // se esconde, solo se aclara cuál es la que cuenta para los cálculos.
+      const cajaRecuperacion = document.getElementById('notaRecuperacionTxt');
+      if(notaEsRazonable(notaDefinitivaFuente) && notaDefinitivaFuente < 3.4 && tieneRecuperacion){
+        cajaRecuperacion.classList.remove('hidden');
+        cajaRecuperacion.innerHTML = `Nota original: <b style="color:var(--bad);">${notaDefinitivaFuente.toFixed(2)}</b> → Plan de Mejora: <b style="color:var(--verde-leo-oscuro);">${fuente.notaRecuperacion.toFixed(2)}</b>`;
+      }else{
+        cajaRecuperacion.classList.add('hidden');
+      }
       document.getElementById('avisoDefinitivaPendiente').classList.toggle('hidden', esCerrado || typeof fuente.notaDefinitiva==='number');
 
       const faltaActitudinal = !notaEsRazonable(fuente.autoevaluacion) || !notaEsRazonable(fuente.coevaluacion);
-      document.getElementById('avisoNotaParcial').classList.toggle('hidden', esCerrado || !(notaEsRazonable(notaDefinitivaFuente) && faltaActitudinal));
+      document.getElementById('avisoNotaParcial').classList.toggle('hidden', esCerrado || !(notaEsRazonable(notaEfectiva) && faltaActitudinal));
 
       const cardObs = document.getElementById('cardObservacion');
       const glosarioMateria = GLOSARIO_OBSERVACIONES[b.materia] || {};
@@ -821,6 +963,10 @@
       const alerta = document.getElementById('alertaMejora');
       const alertaHabilitadaPorDocente = window.__alertaPlanMejoraHabilitadaPorTrimestre?.[numero] !== false;
       if(!esCerrado && alertaHabilitadaPorDocente && typeof fuente.notaDefinitiva === 'number' && fuente.notaDefinitiva < NOTA_MINIMA){
+        alerta.querySelector('h3').textContent = `⚠️ Necesitas presentar el Plan de Mejora — Trimestre ${numero}`;
+        alerta.querySelector('p').innerHTML = `Tu nota definitiva quedó por debajo de 3.4. Debes reportarte y presentar el plan de mejora del trimestre ${numero}.
+        Estate pendiente de las instrucciones en <b>Classroom</b>, o pregunta directamente a tu docente —
+        puedes hacerlo <b>por correo electrónico</b> o <b>en clase</b>.`;
         alerta.classList.remove('hidden');
       }else{
         alerta.classList.add('hidden');
