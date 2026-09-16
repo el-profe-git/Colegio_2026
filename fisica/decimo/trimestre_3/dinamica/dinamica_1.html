@@ -72,6 +72,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script src="../../../../config-compartida.js"></script>
+<script src="../../../../config-trimestre1.js"></script>
+<script src="../../../../config-trimestre2.js"></script>
+<script src="../../../../config-trimestre3.js"></script>
 </head>
 <body>
 
@@ -201,12 +204,37 @@ const VERSION_CODIGO = 'matematicas-enteros · 2026-08-13 (fix iconos pequeños)
 // Así el Panel del Docente puede filtrar por materia, grado, trimestre y
 // actividad, aunque todas compartan el mismo Firestore.
 // ============================================================
-const ETIQUETA_ACTIVIDAD = {
-  materia: 'Matemáticas',
-  grado: 'Sexto',
-  trimestre: 1,
-  actividad: 'Evaluación Enteros y Operaciones Especiales'
+const ETIQUETA_ACTIVIDAD = (function(){
+  // El nombre, materia, grado y trimestre de esta actividad se leen del archivo
+  // config-trimestreN.js — buscando la entrada cuya "ruta" coincide con la ubicación
+  // real de ESTE archivo. Así, renombrar el archivo o cambiar el nombre en el config
+  // es suficiente: no hay que editar nada aquí dentro.
+  const RESPALDO = {
+  materia: 'Física',
+  grado: 'Décimo',
+  trimestre: 3,
+  actividad: 'Dinámica - Leyes de Newton'
 };
+  const NOMBRE_MATERIA = { matematicas: 'Matemáticas', fisica: 'Física' };
+  const GRADO_POR_MATERIA = { matematicas: 'Sexto', fisica: 'Décimo' };
+  try{
+    const rutaActual = decodeURIComponent(window.location.pathname);
+    for(const t of [1,2,3]){
+      const lista = window['ACTIVIDADES_TRIMESTRE_' + t];
+      if(!Array.isArray(lista)) continue;
+      const encontrada = lista.find(a => a && a.ruta && rutaActual.endsWith('/' + a.ruta));
+      if(encontrada){
+        return {
+          materia: NOMBRE_MATERIA[encontrada.materia] || RESPALDO.materia,
+          grado: GRADO_POR_MATERIA[encontrada.materia] || RESPALDO.grado,
+          trimestre: t,
+          actividad: encontrada.nombre
+        };
+      }
+    }
+  }catch(err){ /* si algo falla, se usa el respaldo escrito abajo */ }
+  return RESPALDO;
+})();
 const CARPETA_IMAGENES = 'imagenes/'; // sube las imágenes del examen a esta carpeta, junto al index.html
 
 function slugActividad_(nombre){
