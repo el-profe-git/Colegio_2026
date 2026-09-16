@@ -841,6 +841,15 @@
           <div class="campo"><label>Nueva fecha límite</label>
             <input type="date" id="editFechaLimiteActividad">
           </div>
+          <div class="campo"><label>Trimestre</label>
+            <select id="editTrimestreActividad"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+          </div>
+          <div class="campo"><label>Nombre de la carpeta (si renombraste el archivo o la carpeta en el servidor, corrígelo aquí)</label>
+            <input type="text" id="editCarpetaActividad" style="min-width:200px;">
+          </div>
+          <div class="campo"><label>Nombre del archivo HTML</label>
+            <input type="text" id="editArchivoActividad" style="min-width:200px;">
+          </div>
           <div class="campo"><label>¿Para todo el grado o solo un curso?</label>
             <select id="editCursoActividad">
               <option value="">Todo el grado (todos los cursos)</option>
@@ -888,6 +897,19 @@
         <button class="btn secondary" id="btnDiagnosticar">🩺 Verificar</button>
       </div>
       <div id="resultadoDiagnostico" style="margin-top:10px; font-size:0.85rem; white-space:pre-wrap;"></div>
+    </div>
+
+    <div class="card" style="border-color:var(--naranja-leo);">
+      <h2>🔧 Reparar dominio de Cloudflare en todas las actividades</h2>
+      <div style="font-size:0.82rem; color:var(--slate); margin-bottom:10px;">
+        El dominio correcto es <b>leoteexplica.elp22587.workers.dev</b> — si creaste actividades
+        antes de esta corrección, quedaron guardadas con un dominio equivocado
+        (<code>elprofeleoteexplica...</code>) y por eso daban error 404. Este botón corrige
+        el link de <b>todas</b> las actividades ya registradas de una sola vez, sin tocar
+        nombre, curso, categoría, ni fecha límite — solo el dominio del link.
+      </div>
+      <button class="btn warn" id="btnRepararDominios">🔧 Reparar todos los links ahora</button>
+      <div id="resultadoRepararDominios" style="margin-top:10px; font-size:0.85rem; white-space:pre-wrap;"></div>
     </div>
 
     </div><!-- /vista-nuevaactividad -->
@@ -3670,6 +3692,17 @@
           document.getElementById('editNombreActividad').value = f.nombre;
           document.getElementById('editFechaLimiteActividad').value = fechasPorActividad[f.nombre] || '';
           document.getElementById('editMateriaActividad').value = f.materia || 'matematicas';
+          document.getElementById('editTrimestreActividad').value = f.trimestre || '1';
+          // Carpeta y archivo no se guardan por separado — se extraen del link de GitHub
+          // ya guardado, dividiendo la ruta: {materia}/{grado}/trimestre_{n}/{carpeta}/{archivo}
+          if(f.linkGithub){
+            const rutaSinPrefijo = f.linkGithub.replace('https://el-profe-git.github.io/Colegio_2026/', '');
+            const partes = rutaSinPrefijo.split('/');
+            if(partes.length >= 5){
+              document.getElementById('editCarpetaActividad').value = partes[3];
+              document.getElementById('editArchivoActividad').value = partes[4];
+            }
+          }
           poblarCursosEditarActividad_(); // llena las opciones correctas según la materia, antes de asignar el valor
           document.getElementById('editCursoActividad').value = f.curso || '';
           // Precarga la categoría actual — con respaldo al esquema viejo (categoria como
@@ -3816,6 +3849,36 @@
     }
   });
 
+  document.getElementById('btnRepararDominios').addEventListener('click', async ()=>{
+    const reporte = document.getElementById('resultadoRepararDominios');
+    if(!confirm('¿Reparar el link de Cloudflare de TODAS las actividades registradas? Solo se corrige el dominio — nombre, curso, categoría y fecha límite quedan exactamente igual.')) return;
+
+    reporte.textContent = 'Revisando…';
+    const PREFIJO_GITHUB = 'https://el-profe-git.github.io/Colegio_2026/';
+    const DOMINIO_CORRECTO = 'https://leoteexplica.elp22587.workers.dev/';
+    try{
+      const snap = await db.collection('categoriasActividad').get();
+      let reparadas = 0, yaEstabanBien = 0, sinLinkGithub = 0;
+      const batch = db.batch();
+      snap.forEach(doc=>{
+        const d = doc.data();
+        if(!d.linkGithub || !d.linkGithub.startsWith(PREFIJO_GITHUB)){ sinLinkGithub++; return; }
+        const ruta = d.linkGithub.slice(PREFIJO_GITHUB.length);
+        const linkCorrecto = DOMINIO_CORRECTO + ruta;
+        if(d.link === linkCorrecto){ yaEstabanBien++; return; }
+        batch.update(doc.ref, { link: linkCorrecto });
+        reparadas++;
+      });
+      await batch.commit();
+      let texto = `✅ Listo.\n${reparadas} actividad(es) reparada(s) con el dominio correcto.\n${yaEstabanBien} ya estaban bien, no se tocaron.`;
+      if(sinLinkGithub) texto += `\n⚠ ${sinLinkGithub} no se pudieron reparar (no tienen link de GitHub guardado para reconstruir la ruta) — revísalas a mano en Editar.`;
+      reporte.textContent = texto;
+      cargarListaActividadesCreadas_();
+    }catch(err){
+      reporte.textContent = 'Error al reparar: ' + err.message;
+    }
+  });
+
 
   cargarListaActividadesCreadas_();
 
@@ -3909,8 +3972,20 @@
         const [tipo, num] = planMejoraValorEdit.split('-');
         planMejoraTipoEdit = tipo; planMejoraTrimestreEdit = Number(num);
       }
+
+      // Si cambiaste carpeta, archivo, materia o trimestre — se reconstruye la ruta y
+      // AMBOS links desde cero, igual que al crear la actividad la primera vez.
+      const trimestreNuevo = document.getElementById('editTrimestreActividad').value;
+      const carpetaNueva = document.getElementById('editCarpetaActividad').value.trim();
+      const archivoNuevo = document.getElementById('editArchivoActividad').value.trim();
+      const gradoNuevo = GRADO_POR_MATERIA[materiaNueva];
+      const rutaNueva = `${materiaNueva}/${gradoNuevo}/trimestre_${trimestreNuevo}/${carpetaNueva}/${archivoNuevo}`;
+      const linkGithubNuevo = `https://el-profe-git.github.io/Colegio_2026/${rutaNueva}`;
+      const linkCloudflareNuevo = `https://leoteexplica.elp22587.workers.dev/${rutaNueva}`;
+
       await db.collection('categoriasActividad').doc(nombreParaFecha).set({
-        curso: cursoNuevo, materia: materiaNueva,
+        curso: cursoNuevo, materia: materiaNueva, trimestre: Number(trimestreNuevo),
+        link: linkCloudflareNuevo, linkGithub: linkGithubNuevo,
         esHeteroevaluacion: !planMejoraValorEdit && (cognitivoEdit || procedimentalEdit),
         esActitudinal: !planMejoraValorEdit && (autoevaluacionEdit || coevaluacionEdit),
         subtipos: { cognitivo: cognitivoEdit, procedimental: procedimentalEdit, autoevaluacion: autoevaluacionEdit, coevaluacion: coevaluacionEdit },
@@ -3970,7 +4045,7 @@
     const nombreArchivoConfig = `config-trimestre${trimestre}.js`;
     const lineaConfig = `_registrarActividad(${trimestre}, '${nombreActividad.replace(/'/g,"\\'")}', '${ruta}');`;
     const linkGithub = `https://el-profe-git.github.io/Colegio_2026/${ruta}`;
-    const linkCloudflare = `https://elprofeleoteexplica.elp22587.workers.dev/${ruta}`;
+    const linkCloudflare = `https://leoteexplica.elp22587.workers.dev/${ruta}`;
 
     // El nombre de la actividad es el identificador único en la base de datos — si ya
     // existe una con ese mismo nombre pero para otra materia o ruta distinta, guardarla
